@@ -102,13 +102,12 @@ void micropp<2>::calc_bmat(int gp, double bmat[nvoi][npe *dim])	const
 
 
 template <>
-double micropp<2>::assembly_rhs(const double *u,
-				const double *int_vars_old,
-				double *b)
+double micropp<2>::assembly_rhs(const double *u, const double *int_vars_old,
+								double *b)
 {
 	INST_START;
 
-	memset(b, 0, nndim * sizeof(double));
+	memset(b, 0.0, nndim * sizeof(double));
 
 	double be[dim * npe];
 	int index[dim * npe];

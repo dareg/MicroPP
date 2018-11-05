@@ -60,7 +60,7 @@ void micropp<tdim>::homogenize()
 {
 	INST_START;
 
-#pragma omp parallel for schedule(dynamic,1)
+	#pragma omp parallel for schedule(dynamic,1)
 	for (int igp = 0; igp < ngp; ++igp) {
 
 		const int ns[3] = { nx, ny, nz };
@@ -91,7 +91,7 @@ void micropp<tdim>::homogenize()
 			       gp_ptr->int_vars_n, &newton);
 
 		memcpy(gp_ptr->u_k, u, nndim * sizeof(double));
-		memcpy(&(gp_ptr->newton), &newton, sizeof(newton_t));
+		gp_ptr->newton = newton;
 
 		for (int i = 0; i < newton.its; ++i)
 			gp_ptr->cost += newton.solver_its[i];
@@ -114,7 +114,7 @@ void micropp<tdim>::homogenize()
 		}
 
 		/* Updates <vars_new> and <f_trial_max> */
-		bool nl_flag = calc_vars_new(gp_ptr->u_k, gp_ptr->int_vars_n, vars_new, &f_trial_max);
+		nl_flag = calc_vars_new(gp_ptr->u_k, gp_ptr->int_vars_n, vars_new, &f_trial_max);
 
 		if (nl_flag == true) {
 			if (gp_ptr->allocated == false) {
@@ -149,7 +149,9 @@ void micropp<tdim>::homogenize()
 						(sig_1[v] - sig_0[v]) / D_EPS_CTAN_AVE;
 
 			}
+
 			filter(gp_ptr->macro_ctan, nvoi * nvoi, FILTER_REL_TOL);
+
 		}
 
 		ell_free(&A);

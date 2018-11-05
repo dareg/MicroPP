@@ -106,8 +106,10 @@ class micropp {
 
 		double micro_params[5];
 		int numMaterials;
-		material_t material_list[MAX_MATS];
+		material_t *material_list;
 		double ctan_lin[nvoi * nvoi];
+
+		ell_matrix A0; // Linear Jacobian (constant)
 
 		int *elem_type;
 		double *elem_stress;
@@ -162,8 +164,6 @@ class micropp {
 
 		double assembly_rhs(const double *u, const double *vars_old, double *b);
 		void assembly_mat(ell_matrix *A, const double *u, const double *vars_old);
-
-
 
 		void write_vtu(double *u, double *vars_old, const char *filename);
 

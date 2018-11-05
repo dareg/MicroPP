@@ -65,12 +65,20 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 		gp_list[gp].u_k = (double *) calloc(nndim, sizeof(double));
 	}
 
+	int nParams = 4;
+	numMaterials = 2;
+
+	material_list = (material_t *) malloc(numMaterials * sizeof(material_t));
+	{
+		for (int i = 0; i < numMaterials; ++i)
+			material_list[i] = _materials[i];
+	}
+
 	elem_type = (int *) calloc(nelem, sizeof(int));
 	elem_stress = (double *) calloc(nelem * nvoi, sizeof(double));
 	elem_strain = (double *) calloc(nelem * nvoi, sizeof(double));
 
-	int nParams = 4;
-	numMaterials = 2;
+	assert(elem_stress && elem_strain && elem_type && vars_new_aux);
 
 	for (int i = 0; i < nParams; i++)
 		micro_params[i] = _micro_params[i];
@@ -86,6 +94,13 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 			}
 		}
 	}
+
+	const int ns[3] = { nx, ny, nz };
+	const int nfield = dim;
+
+	ell_init(&A0, nfield, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
+	double *u = (double *) calloc(nndim, sizeof(double));
+	assembly_mat(&A0, u, NULL);
 
 	memset(ctan_lin, 0.0, nvoi * nvoi * sizeof(double));
 	if (coupling != NO_COUPLING)
@@ -196,6 +211,15 @@ int micropp<tdim>::get_cost(int gp_id) const
 template <int tdim>
 void micropp<tdim>::calc_ctan_lin()
 {
+	double *u_aux = (double *) malloc(nndim * sizeof(double));
+	double *b = (double *) malloc(nndim * sizeof(double));
+	double *du = (double *) malloc(nndim * sizeof(double));
+
+	const int ns[3] = { nx, ny, nz };
+
+	ell_matrix A;
+	ell_init(&A, dim, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
+
 	double sig_1[6];
 
 	newton_t newton;
@@ -230,7 +254,12 @@ void micropp<tdim>::calc_ctan_lin()
 		free(u);
 		free(du);
 	}
+
 	filter(ctan_lin, nvoi * nvoi, FILTER_REL_TOL);
+
+	free(u_aux);
+	free(b);
+	free(du);
 }
 
 

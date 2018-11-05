@@ -56,7 +56,15 @@ int main (int argc, char *argv[])
 				double *u = (double *) calloc(nndim, sizeof(double));
 
 				double lerr, cg_err;
-				memset(u, 0.0, nndim * sizeof(double));
+
+				const int ns[3] = { nx, ny, nz };
+
+				ell_matrix A;
+				ell_init(&A, dim, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
+
+				double *u = (double *) calloc(nndim, sizeof(double));
+				double *du = (double *) malloc(nndim * sizeof(double));
+				double *b = (double *) malloc(nndim * sizeof(double));
 
 				set_displ_bc(strain, u);
 				lerr = assembly_rhs(u, nullptr, b);
