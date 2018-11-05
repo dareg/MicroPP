@@ -64,10 +64,10 @@ void micropp<tdim>::homogenize()
 	for (int igp = 0; igp < ngp; ++igp) {
 
 		const int ns[3] = { nx, ny, nz };
-		const int nfield = dim;
 
-		ell_matrix A;  // Jacobian
-		ell_init(&A, nfield, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
+		ell_matrix A;
+		ell_init(&A, ell_cols, dim, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
+
 		double *b = (double *) calloc(nndim, sizeof(double));
 		double *du = (double *) calloc(nndim, sizeof(double));
 		double *u = (double *) calloc(nndim, sizeof(double));
@@ -114,7 +114,7 @@ void micropp<tdim>::homogenize()
 		}
 
 		/* Updates <vars_new> and <f_trial_max> */
-		nl_flag = calc_vars_new(gp_ptr->u_k, gp_ptr->int_vars_n, vars_new, &f_trial_max);
+		bool nl_flag = calc_vars_new(gp_ptr->u_k, gp_ptr->int_vars_n, vars_new, &f_trial_max);
 
 		if (nl_flag == true) {
 			if (gp_ptr->allocated == false) {
@@ -147,7 +147,6 @@ void micropp<tdim>::homogenize()
 				for (int v = 0; v < nvoi; ++v)
 					gp_ptr->macro_ctan[v * nvoi + i] =
 						(sig_1[v] - sig_0[v]) / D_EPS_CTAN_AVE;
-
 			}
 
 			filter(gp_ptr->macro_ctan, nvoi * nvoi, FILTER_REL_TOL);

@@ -33,25 +33,25 @@ void micropp<2>::set_displ_bc(const double eps[nvoi], double *u)
 	for (int i = 0; i < nx; ++i) {
 		const int n = nod_index(i, 0, 0); // y = 0
 		const double coor[2] = { i * dx, 0 };
-		mvp_2(eps_t, coor, &u[n * dim]);
+		mvp<2>(eps_t, coor, &u[n * dim]);
 	}
 
 	for (int i = 0; i < nx; ++i) {
 		const int n = nod_index(i, ny - 1, 0); // y = ly
 		const double coor[2] = { i * dx, ly };
-		mvp_2(eps_t, coor, &u[n * dim]);
+		mvp<2>(eps_t, coor, &u[n * dim]);
 	}
 
 	for (int j = 1; j < ny - 1; ++j) {
 		const int n = nod_index(0, j, 0); // x = 0
 		const double coor[2] = { 0, j * dy };
-		mvp_2(eps_t, coor, &u[n * dim]);
+		mvp<2>(eps_t, coor, &u[n * dim]);
 	}
 
 	for (int j = 1; j < ny - 1; ++j) {
 		const int n = nod_index(nx - 1, j, 0); // x = lx
 		const double coor[2] = { lx, j * dy };
-		mvp_2(eps_t, coor, &u[n * dim]);
+		mvp<2>(eps_t, coor, &u[n * dim]);
 	}
 }
 
@@ -167,9 +167,9 @@ double micropp<2>::assembly_rhs(const double *u, const double *int_vars_old,
 	return norm;
 }
 
-
 template <>
-void micropp<2>::assembly_mat(ell_matrix *A, const double *u, const double *int_vars_old)
+void micropp<2>::assembly_mat(ell_matrix *A, const double *u,
+							  const double *int_vars_old) const
 {
 	INST_START;
 

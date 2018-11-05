@@ -27,12 +27,13 @@ template<int tdim>
 micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 		       const double _micro_params[4],
 		       const material_t *_materials, int _coupling):
-	/* 
+	/*
 	 * The <_ctan_lin> option is intended for cases that we don't want to
 	 * calculate the ctan_lin because of it computational cost. For example,
 	 * for doing profile of the solver.
 	 *
 	 */
+
 
 	ngp(_ngp),
 	nx(size[0]), ny(size[1]),
@@ -98,9 +99,16 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 	const int ns[3] = { nx, ny, nz };
 	const int nfield = dim;
 
-	ell_init(&A0, nfield, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
-	double *u = (double *) calloc(nndim, sizeof(double));
-	assembly_mat(&A0, u, NULL);
+	ell_cols = ell_init_cols(dim, dim, ns, &ell_cols_size);
+
+	{
+		double *u = (double *) calloc(nndim, sizeof(double));
+
+		ell_init(&A0, ell_cols, nfield, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
+		assembly_mat(&A0, u, NULL);
+
+		free(u);
+	}
 
 	memset(ctan_lin, 0.0, nvoi * nvoi * sizeof(double));
 	if (coupling != NO_COUPLING)
@@ -122,6 +130,8 @@ micropp<tdim>::~micropp()
 	free(elem_stress);
 	free(elem_strain);
 	free(elem_type);
+
+	free(ell_cols);
 
 	delete [] gp_list;
 }
@@ -211,14 +221,12 @@ int micropp<tdim>::get_cost(int gp_id) const
 template <int tdim>
 void micropp<tdim>::calc_ctan_lin()
 {
-	double *u_aux = (double *) malloc(nndim * sizeof(double));
-	double *b = (double *) malloc(nndim * sizeof(double));
-	double *du = (double *) malloc(nndim * sizeof(double));
+
+	double *u = (double *) calloc(nndim, sizeof(double));
+	double *du = (double *) calloc(nndim, sizeof(double));
+	double *b = (double *) calloc(nndim, sizeof(double));
 
 	const int ns[3] = { nx, ny, nz };
-
-	ell_matrix A;
-	ell_init(&A, dim, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
 
 	double sig_1[6];
 
@@ -257,7 +265,7 @@ void micropp<tdim>::calc_ctan_lin()
 
 	filter(ctan_lin, nvoi * nvoi, FILTER_REL_TOL);
 
-	free(u_aux);
+	free(u);
 	free(b);
 	free(du);
 }
@@ -595,7 +603,7 @@ void micropp<tdim>::print_info() const
 		default:
 			break;
 	}
-       	
+
 	cout << "ngp :" << ngp << " nx :" << nx << " ny :" << ny << " nz :" << nz << " nn :" << nn << endl;
 	cout << "lx : " << lx << " ly : " << ly << " lz : " << lz << " param : " << special_param << endl;
 	for (int i = 0; i < numMaterials; ++i)

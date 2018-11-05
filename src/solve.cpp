@@ -22,9 +22,7 @@
 
 #include "micro.hpp"
 
-
 using namespace std;
-
 
 template <int tdim>
 int micropp<tdim>::newton_raphson(ell_matrix *A, double *b, double *u, double *du,

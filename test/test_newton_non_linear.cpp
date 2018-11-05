@@ -50,16 +50,17 @@ int main (int argc, char *argv[])
 			{
 
 				double lerr, cg_err;
-				memset(u_aux, 0.0, nndim * sizeof(double));
-				newton_raphson_v(true,
-						 5,
-						 MAT_MODE_A,
-						 strain,
-						 nullptr,
-						 u_aux,
-						 nullptr,
-						 true);
+				double *u_aux = (double *) calloc(nndim, sizeof(double));
+				double *b = (double *) malloc(nndim * sizeof(double));
+				double *du = (double *) malloc(nndim * sizeof(double));
 
+				memset(u_aux, 0.0, nndim * sizeof(double));
+
+				newton_raphson_linear(strain, u_aux, b, du, true);
+
+				free(u_aux);
+				free(b);
+				free(du);
 			};
 
 	};

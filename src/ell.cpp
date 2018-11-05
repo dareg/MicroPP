@@ -23,14 +23,154 @@
 
 #include <cmath>
 
+#include "tasks.hpp"
 #include "ell.hpp"
 #include "instrument.hpp"
 
 using namespace std;
 
+int *ell_init_cols(const int nfield, const int dim, const int ns[3],
+                   int *ell_cols_size)
+{
 
-void ell_init(ell_matrix *m, const int nfield, const int dim, const int ns[3],
-	      const double min_err, const double rel_err, const int max_its)
+	const int nx = ns[0];
+	const int ny = ns[1];
+	const int nz = ns[2];
+	const int nn = (dim == 2) ? nx * ny : nx * ny * nz;
+	const int num_nodes = (dim == 2) ? 9 : 27;
+	const int nnz = num_nodes * nfield;
+	const int nrow = nn * nfield;
+
+	const int size = num_nodes * nfield * nn * nfield;
+	*ell_cols_size = size;
+
+	int *cols = (int *) malloc((size) * sizeof(int));
+
+	#pragma oss task weakout(cols[0; size]) label(init_ell_cols_weak)
+	{
+		const int nodes = get_nodes_nr();
+		int l_sizes[nodes];
+		int l_start[nodes];
+
+		if (dim == 2) {
+			distribute(ny, nodes, l_start, l_sizes);
+			const int slice = num_nodes * nfield * nfield * nx;
+
+			#ifndef NDEBUG
+			printarray(nodes, l_sizes);
+			printarray(nodes, l_start);
+			#endif
+
+			for (int t = 0; t < nodes; ++t)	{
+				const int size = l_sizes[t];
+				const int start = l_start[t];
+
+				#pragma oss task out(cols[slice * start; slice * size]) label(init_ell_cols)
+				{
+					for (int yi = start; yi < start + size; ++yi) {
+						for (int xi = 0; xi < nx; ++xi) {
+							for (int fi = 0; fi < nfield; ++fi) {
+
+								const int ni = nod_index2D(xi, yi);
+								int * const cols_ptr = &(cols[ni * nfield * nnz + fi * nnz]);
+
+								int ix[] = {
+									(yi == 0 || xi == 0)           ? 0 : ni - nx - 1,
+									(yi == 0)                      ? 0 : ni - nx,
+									(yi == 0 || xi == nx - 1)      ? 0 : ni - nx + 1,
+									(xi == 0)                      ? 0 : ni - 1,
+									ni,
+									(xi == nx - 1)                 ? 0 : ni + 1,
+									(xi == 0 || yi == ny - 1)      ? 0 : ni + nx - 1,
+									(yi == ny - 1)                 ? 0 : ni + nx,
+									(xi == nx - 1 || yi == ny - 1) ? 0 : ni + nx + 1 };
+
+								for (int n = 0; n < num_nodes; ++n)
+									for (int fj = 0; fj < nfield; ++fj)
+										cols_ptr[n * nfield + fj] = ix[n] * nfield + fj;
+							}
+						}
+					}
+				}
+			}
+
+		} else if (dim == 3) {
+
+			const int nxny = nx * ny;
+
+			distribute(nz, nodes, l_start, l_sizes);
+			const int slice = num_nodes * nfield * nfield * nx * ny;
+
+			#ifndef NDEBUG
+			printarray(nodes, l_sizes);
+			printarray(nodes, l_start);
+			#endif
+
+			for (int t = 0; t < nodes; ++t)	{
+				const int size = l_sizes[t];
+				const int start = l_start[t];
+
+				#pragma oss task out(cols[slice * start; slice * size])
+				{
+					dprintf("col_init[%d] in node: %d\n", t, get_node_id());
+
+					for (int zi = start; zi < start + size; ++zi) {
+						for (int yi = 0; yi < ny; ++yi) {
+							for (int xi = 0; xi < nx; ++xi) {
+								for (int fi = 0; fi < nfield; ++fi) {
+
+									const int ni = nod_index3D(xi, yi, zi);
+									int * const cols_ptr = &(cols[ni * nfield * nnz + fi * nnz]);
+
+									int ix[] = {
+										(zi == 0 || yi == 0 || xi == 0)                ? 0 : ni - nxny - nx - 1,
+										(zi == 0 || yi == 0)                           ? 0 : ni - nxny - nx,
+										(zi == 0 || yi == 0 || xi == nx - 1)           ? 0 : ni - nxny - nx + 1,
+										(zi == 0 || xi == 0)                           ? 0 : ni - nxny - 1,
+										(zi == 0)                                      ? 0 : ni - nxny,
+										(zi == 0 || xi == nx - 1)                      ? 0 : ni - nxny + 1,
+										(zi == 0 || yi == ny - 1 || xi == 0)           ? 0 : ni - nxny + nx - 1,
+										(zi == 0 || yi == ny - 1)                      ? 0 : ni - nxny + nx,
+										(zi == 0 || yi == ny - 1 || xi == nx - 1)      ? 0 : ni - nxny + nx + 1,
+
+										(yi == 0 || xi == 0)                           ? 0 : ni - nx - 1,
+										(yi == 0)                                      ? 0 : ni - nx,
+										(yi == 0 || xi == nx - 1)                      ? 0 : ni - nx + 1,
+										(xi == 0)                                      ? 0 : ni - 1,
+										ni,
+										(xi == nx - 1)                                 ? 0 : ni + 1,
+										(yi == ny - 1 || xi == 0)                      ? 0 : ni + nx - 1,
+										(yi == ny - 1)                                 ? 0 : ni + nx,
+										(yi == ny - 1 || xi == nx - 1)                 ? 0 : ni + nx + 1,
+
+										(zi == nz - 1 || yi == 0 || xi == 0)           ? 0 : ni + nxny - nx - 1,
+										(zi == nz - 1 || yi == 0)                      ? 0 : ni + nxny - nx,
+										(zi == nz - 1 || yi == 0 || xi == nx - 1)      ? 0 : ni + nxny - nx + 1,
+										(zi == nz - 1 || xi == 0)                      ? 0 : ni + nxny - 1,
+										(zi == nz - 1)                                 ? 0 : ni + nxny,
+										(zi == nz - 1 || xi == nx - 1)                 ? 0 : ni + nxny + 1,
+										(zi == nz - 1 || yi == ny - 1 || xi == 0)      ? 0 : ni + nxny + nx - 1,
+										(zi == nz - 1 || yi == ny - 1)                 ? 0 : ni + nxny + nx,
+										(zi == nz - 1 || yi == ny - 1 || xi == nx - 1) ? 0 : ni + nxny + nx + 1 };
+
+									for (int n = 0; n < num_nodes; ++n)
+										for (int fj = 0; fj < nfield; ++fj)
+											cols_ptr[n * nfield + fj] = ix[n] * nfield + fj;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	#pragma oss taskwait
+
+	return cols;
+}
+
+void ell_init(ell_matrix *m, int *cols, const int nfield, const int dim,
+              const int ns[3], const double min_err, const double rel_err, const int max_its)
 {
 	memcpy(m->n, ns, 3 * sizeof(int));
 	assert(ns[0] >= 0 && ns[1] >= 0 && ns[2] >= 0);
@@ -54,7 +194,8 @@ void ell_init(ell_matrix *m, const int nfield, const int dim, const int ns[3],
 	m->nnz = nnz;
 	m->nrow = nrow;
 	m->ncol = nrow;
-	m->cols = (int *) malloc(nnz * nrow * sizeof(int));
+
+	m->cols = cols;
 	m->vals = (double *) malloc(nnz * nrow * sizeof(double));
 
 	m->max_its = max_its;
@@ -65,84 +206,6 @@ void ell_init(ell_matrix *m, const int nfield, const int dim, const int ns[3],
 	m->z = (double *) malloc(nn * nfield * sizeof(double));
 	m->p = (double *) malloc(nn * nfield * sizeof(double));
 	m->Ap = (double *) malloc(nn * nfield * sizeof(double));
-
-	if (dim == 2) {
-
-		for (int fi = 0; fi < nfield; ++fi) {
-			for (int xi = 0; xi < nx; ++xi) {
-				for (int yi = 0; yi < ny; ++yi) {
-
-					const int ni = nod_index2D(xi, yi);
-					int * const cols_ptr = &(m->cols[ni * nfield * nnz + fi * nnz]);
-
-					int ix[num_nodes] = {
-						(yi == 0 || xi == 0)           ? 0 : ni - nx - 1,
-						(yi == 0)                      ? 0 : ni - nx,
-						(yi == 0 || xi == nx - 1)      ? 0 : ni - nx + 1,
-						(xi == 0)                      ? 0 : ni - 1,
-						ni,
-						(xi == nx - 1)                 ? 0 : ni + 1,
-						(xi == 0 || yi == ny - 1)      ? 0 : ni + nx - 1,
-						(yi == ny - 1)                 ? 0 : ni + nx,
-						(xi == nx - 1 || yi == ny - 1) ? 0 : ni + nx + 1 };
-
-					for (int n = 0; n < num_nodes; ++n)
-						for (int fj = 0; fj < nfield; ++fj)
-							cols_ptr[n * nfield + fj] = ix[n] * nfield + fj;
-				}
-			}
-		}
-
-	} else if (dim == 3) {
-
-		for (int fi = 0; fi < nfield; ++fi) {
-			for (int xi = 0; xi < nx; ++xi) {
-				for (int yi = 0; yi < ny; ++yi) {
-					for (int zi = 0; zi < nz; ++zi) {
-
-						const int ni = nod_index3D(xi, yi, zi);
-						int * const cols_ptr = &(m->cols[ni * nfield * nnz + fi * nnz]);
-
-						int ix[num_nodes] = {
-							(zi == 0 || yi == 0 || xi == 0)                ? 0 : ni - nxny - nx - 1,
-							(zi == 0 || yi == 0)                           ? 0 : ni - nxny - nx,
-							(zi == 0 || yi == 0 || xi == nx - 1)           ? 0 : ni - nxny - nx + 1,
-							(zi == 0 || xi == 0)                           ? 0 : ni - nxny - 1,
-							(zi == 0)                                      ? 0 : ni - nxny,
-							(zi == 0 || xi == nx - 1)                      ? 0 : ni - nxny + 1,
-							(zi == 0 || yi == ny - 1 || xi == 0)           ? 0 : ni - nxny + nx - 1,
-							(zi == 0 || yi == ny - 1)                      ? 0 : ni - nxny + nx,
-							(zi == 0 || yi == ny - 1 || xi == nx - 1)      ? 0 : ni - nxny + nx + 1,
-
-							(yi == 0 || xi == 0)                           ? 0 : ni - nx - 1,
-							(yi == 0)                                      ? 0 : ni - nx,
-							(yi == 0 || xi == nx - 1)                      ? 0 : ni - nx + 1,
-							(xi == 0)                                      ? 0 : ni - 1,
-							ni,
-							(xi == nx - 1)                                 ? 0 : ni + 1,
-							(yi == ny - 1 || xi == 0)                      ? 0 : ni + nx - 1,
-							(yi == ny - 1)                                 ? 0 : ni + nx,
-							(yi == ny - 1 || xi == nx - 1)                 ? 0 : ni + nx + 1,
-
-							(zi == nz - 1 || yi == 0 || xi == 0)           ? 0 : ni + nxny - nx - 1,
-							(zi == nz - 1 || yi == 0)                      ? 0 : ni + nxny - nx,
-							(zi == nz - 1 || yi == 0 || xi == nx - 1)      ? 0 : ni + nxny - nx + 1,
-							(zi == nz - 1 || xi == 0)                      ? 0 : ni + nxny - 1,
-							(zi == nz - 1)                                 ? 0 : ni + nxny,
-							(zi == nz - 1 || xi == nx - 1)                 ? 0 : ni + nxny + 1,
-							(zi == nz - 1 || yi == ny - 1 || xi == 0)      ? 0 : ni + nxny + nx - 1,
-							(zi == nz - 1 || yi == ny - 1)                 ? 0 : ni + nxny + nx,
-							(zi == nz - 1 || yi == ny - 1 || xi == nx - 1) ? 0 : ni + nxny + nx + 1 };
-
-						for (int n = 0; n < num_nodes; ++n)
-							for (int fj = 0; fj < nfield; ++fj)
-								cols_ptr[n * nfield + fj] = ix[n] * nfield + fj;
-					}
-				}
-			}
-		}
-	}
-
 }
 
 
@@ -190,7 +253,7 @@ double ell_get_norm(const ell_matrix *m)
 
 
 int ell_solve_cgpd(const ell_matrix *m, const double *b,
-		   double *x, double *err_)
+                   double *x, double *err_)
 {
 	INST_START;
 
@@ -206,7 +269,9 @@ int ell_solve_cgpd(const ell_matrix *m, const double *b,
 	for (int i = 0; i < nn; i++) {
 		for (int d = 0; d < nfield; d++)
 			m->k[i * nfield + d] = 1 / m->vals[i * nfield * m->nnz
-				+ shift * nfield + d * m->nnz + d];
+			                                   + shift * nfield
+			                                   + d * m->nnz
+			                                   + d];
 	}
 
 	memset(x, 0.0, m->nrow * sizeof(double));
@@ -277,17 +342,16 @@ void ell_add_2D(ell_matrix *m, int ex, int ey, const double *Ae)
 	const int nfield = m->nfield;
 	const int npe = 4;
 	const int nnz = m->nnz;
-	const int cols_row[4][4] = {
-		{ 4, 5, 8, 7 },
-		{ 3, 4, 7, 6 },
-		{ 0, 1, 4, 3 },
-		{ 1, 2, 5, 4 } };
 
+	const int cols_row[4][4] = { { 4, 5, 8, 7 },
+	                             { 3, 4, 7, 6 },
+	                             { 0, 1, 4, 3 },
+	                             { 1, 2, 5, 4 } };
 	const int n0 = ey * nx + ex;
 	const int ix_glo[4] = { n0,
-		n0 + 1,
-		n0 + nx + 1,
-		n0 + nx };
+	                        n0 + 1,
+	                        n0 + nx + 1,
+	                        n0 + nx };
 
 	const int nnz_nfield = nfield * nnz;
 	const int npe_nfield = npe * nfield;
@@ -315,15 +379,15 @@ void ell_add_3D(ell_matrix *m, int ex, int ey, int ez, const double *Ae)
 	const int nfield = m->nfield;
 	const int npe = 8;
 	const int nnz = m->nnz;
-	const int cols_row[8][8] = {
-		{ 13, 14, 17, 16, 22, 23, 26, 25 },
-		{ 12, 13, 16, 15, 21, 22, 25, 24 },
-		{ 9,  10, 13, 12, 18, 19, 22, 21 },
-		{ 10, 11, 14, 13, 19, 20, 23, 22 },
-		{ 4,  5,  8,  7,  13, 14, 17, 16 },
-		{ 3,  4,  7,  6,  12, 13, 16, 15 },
-		{ 0,  1,  4,  3,  9,  10, 13, 12 },
-		{ 1,  2,  5,  4,  10, 11, 14, 13 } };
+
+	const int cols_row[8][8] = { { 13, 14, 17, 16, 22, 23, 26, 25 },
+	                             { 12, 13, 16, 15, 21, 22, 25, 24 },
+	                             { 9,  10, 13, 12, 18, 19, 22, 21 },
+	                             { 10, 11, 14, 13, 19, 20, 23, 22 },
+	                             { 4,  5,  8,  7,  13, 14, 17, 16 },
+	                             { 3,  4,  7,  6,  12, 13, 16, 15 },
+	                             { 0,  1,  4,  3,  9,  10, 13, 12 },
+	                             { 1,  2,  5,  4,  10, 11, 14, 13 } };
 
 	const int nxny = nx * ny;
 	const int n0 = ez * nxny + ey * nx + ex;
@@ -398,7 +462,7 @@ void ell_set_bc_3D(ell_matrix *m)
 {
 	INST_START;
 
-	// Sets 1s on the diagonal of the boundaries and 0s
+	// Sets 1s on the diagonal of the boundaries and 0s 
 	// on the columns corresponding to that values
 	const int nx = m->n[0];
 	const int ny = m->n[1];
@@ -462,20 +526,14 @@ void ell_set_bc_3D(ell_matrix *m)
 
 void ell_free(ell_matrix *m)
 {
-	if (m->cols != NULL)
-		free(m->cols);
-	if (m->vals != NULL)
-		free(m->vals);
-	if (m->k != NULL)
-		free(m->k);
-	if (m->r != NULL)
-		free(m->r);
-	if (m->z != NULL)
-		free(m->z);
-	if (m->p != NULL)
-		free(m->p);
-	if (m->Ap != NULL)
-		free(m->Ap);
+	free(m->vals);
+
+	free(m->k);
+	free(m->r);
+	free(m->z);
+	free(m->p);
+	free(m->Ap);
+
 }
 
 
@@ -487,7 +545,7 @@ void print_ell(const ell_matrix *A)
 	for (int i = 0; i < A->nrow ; ++i)
 		for (int j = 0; j < A->nnz ; ++j)
 			fprintf(file, "[%d][%d][%lf]\n", i, A->cols[i*A->nnz + j],
-				A->vals[i*A->nnz + j]);
+			        A->vals[i*A->nnz + j]);
 
 	fclose(file);
 }

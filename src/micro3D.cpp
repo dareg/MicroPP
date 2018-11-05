@@ -35,7 +35,7 @@ void micropp<3>::set_displ_bc(const double eps[nvoi], double *u)
 		for (int j = 0; j < ny; ++j) {
 			const int n = nod_index3D(i, j, 0); // z = 0
 			const double coor[3] = { i * dx, j * dy, 0 };
-			mvp_3(eps_t, coor, &u[n * dim]);
+			mvp<3>(eps_t, coor, &u[n * dim]);
 		}
 	}
 
@@ -43,7 +43,7 @@ void micropp<3>::set_displ_bc(const double eps[nvoi], double *u)
 		for (int j = 0; j < ny; ++j) {
 			const int n = nod_index3D(i, j, nz - 1); // z = lz
 			const double coor[3] = { i * dx, j * dy, lz };
-			mvp_3(eps_t, coor, &u[n * dim]);
+			mvp<3>(eps_t, coor, &u[n * dim]);
 		}
 	}
 
@@ -51,7 +51,7 @@ void micropp<3>::set_displ_bc(const double eps[nvoi], double *u)
 		for (int k = 0; k < nz; ++k) {
 			const int n = nod_index3D(i, 0, k); // y = 0
 			const double coor[3] = { i * dx, 0, k * dz };
-			mvp_3(eps_t, coor, &u[n * dim]);
+			mvp<3>(eps_t, coor, &u[n * dim]);
 		}
 	}
 
@@ -59,7 +59,7 @@ void micropp<3>::set_displ_bc(const double eps[nvoi], double *u)
 		for (int k = 0; k < nz; ++k) {
 			const int n = nod_index3D(i, ny - 1, k); // y = ly
 			const double coor[3] = { i * dx, ly , k * dz };
-			mvp_3(eps_t, coor, &u[n * dim]);
+			mvp<3>(eps_t, coor, &u[n * dim]);
 		}
 	}
 
@@ -67,15 +67,16 @@ void micropp<3>::set_displ_bc(const double eps[nvoi], double *u)
 		for (int k = 0; k < nz; ++k) {
 			const int n = nod_index3D(0, j, k); // x = 0
 			const double coor[3] = { 0, j * dy , k * dz };
-			mvp_3(eps_t, coor, &u[n * dim]);
+			mvp<3>(eps_t, coor, &u[n * dim]);
 		}
 	}
 
 	for (int j = 0; j < ny; ++j) {
 		for (int k = 0; k < nz; ++k) {
 			const int n = nod_index3D(nx - 1, j, k); // x = lx
-			const double coor[3] = { lx, j * dy , k * dz };
-			mvp_3(eps_t, coor, &u[n * dim]);
+			const double coor[3] = { ly, j * dy , k * dz };
+
+			mvp<3>(eps_t, coor, &u[n * dim]);
 		}
 	}
 }
@@ -229,10 +230,9 @@ double micropp<3>::assembly_rhs(const double *u, const double *int_vars_old,
 }
 
 
-
-
 template <>
-void micropp<3>::assembly_mat(ell_matrix *A, const double *u, const double *int_vars_old)
+void micropp<3>::assembly_mat(ell_matrix *A, const double *u,
+							  const double *int_vars_old) const
 {
 	INST_START;
 

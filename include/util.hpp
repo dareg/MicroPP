@@ -85,38 +85,43 @@ inline void print_vec(const double *vec, int n, const char file_name[])
 	fclose(file);
 }
 
-
-inline void mvp_2(const double m[2][2], const double x[2], double y[2])
+template <int tdim>
+void mvp(const double m[tdim][tdim], const double x[tdim], double y[tdim])
 {
-	for (int i = 0; i < 2; ++i) {
+	for (int i = 0; i < tdim; ++i) {
 		double tmp = 0.0;
-		for (int j = 0; j < 2; ++j)
+		for (int j = 0; j < tdim; ++j)
 			tmp += m[i][j] * x[j];
 		y[i] = tmp;
 	}
 }
 
-
-inline void mvp_3(const double m[2][2], const double x[2], double y[2])
+inline void distribute(int total, int nodes, int *start, int *nelems)
 {
-	for (int i = 0; i < 2; ++i) {
-		double tmp = 0.0;
-		for (int j = 0; j < 2; ++j)
-			tmp += m[i][j] * x[j];
-		y[i] = tmp;
+	assert (nodes > 0);
+	const int frac = total / nodes;
+	const int mod = total - frac * nodes;
+	int cum = 0;
+	for(int i = 0; i < mod; ++i) {
+		nelems[i] = frac + 1;
+		start[i] = cum;
+		cum += frac + 1;
+	}
+
+	for(int i = mod; i < nodes; ++i) {
+		nelems[i] = frac;
+		start[i] = cum;
+		cum += frac;
 	}
 }
 
-
-inline void mvp_3(const double m[3][3], const double x[3], double y[3])
+template <typename T>
+void printarray(const int size, T array)
 {
-	for (int i = 0; i < 3; ++i) {
-		double tmp = 0.0;
-		for (int j = 0; j < 3; ++j)
-			tmp += m[i][j] * x[j];
-		y[i] = tmp;
-	}
+	cerr << "[ ";
+	for (int i = 0; i < size; ++i)
+		cerr << array[i] << " ";
+	cerr << "]\n";
 }
-
 
 #endif

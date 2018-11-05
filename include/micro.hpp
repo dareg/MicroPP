@@ -64,20 +64,20 @@
 
 
 enum {
-       	MIC_SPHERE,
-       	MIC_LAYER_Y,
-       	MIC_CILI_FIB_Z,
-       	MIC_CILI_FIB_XZ,
-       	MIC_QUAD_FIB_XYZ,
-       	MIC_QUAD_FIB_XZ,
+	MIC_SPHERE,
+	MIC_LAYER_Y,
+	MIC_CILI_FIB_Z,
+	MIC_CILI_FIB_XZ,
+	MIC_QUAD_FIB_XYZ,
+	MIC_QUAD_FIB_XZ,
 	MIC_QUAD_FIB_XZ_BROKEN_X,
 	MIC_SPHERES
 };
 
 enum {
-       	NO_COUPLING,
-       	ONE_WAY,
-       	FULL
+	NO_COUPLING,
+	ONE_WAY,
+	FULL
 };
 
 
@@ -87,135 +87,141 @@ using namespace std;
 template <int tdim>
 class micropp {
 
-	protected:
-		static constexpr int dim = tdim;                  // 2, 3
-		static constexpr int npe = mypow(2, dim);         // 4, 8
-		static constexpr int nvoi = dim * (dim + 1) / 2;  // 3, 6
+protected:
+	static constexpr int dim = tdim;                  // 2, 3
+	static constexpr int npe = mypow(2, dim);         // 4, 8
+	static constexpr int nvoi = dim * (dim + 1) / 2;  // 3, 6
 
-		const int ngp, nx, ny, nz, nn, nndim;
-		const int nex, ney, nez, nelem;
-		const double lx, ly, lz;
-		const double dx, dy, dz;
-		const double vol_tot;
-		const double special_param, wg, ivol;
+	const int ngp, nx, ny, nz, nn, nndim;
+	const int nex, ney, nez, nelem;
+	const double lx, ly, lz;
+	const double dx, dy, dz;
+	const double vol_tot;
+	const double special_param, wg, ivol;
 
-		const int micro_type, num_int_vars;
-		gp_t<tdim> *gp_list;
+	const int micro_type, num_int_vars;
+	gp_t<tdim> *gp_list;
 
-		int coupling;
+	int coupling;
 
-		double micro_params[5];
-		int numMaterials;
-		material_t *material_list;
-		double ctan_lin[nvoi * nvoi];
+	double micro_params[5];
+	int numMaterials;
+	material_t *material_list;
+	double ctan_lin[nvoi * nvoi];
 
-		ell_matrix A0; // Linear Jacobian (constant)
+	ell_matrix A0; // Linear Jacobian (constant)
 
-		int *elem_type;
-		double *elem_stress;
-		double *elem_strain;
+	int *ell_cols;
+	int ell_cols_size;
 
-		const double xg[8][3] = {
-			{ -CONSTXG, -CONSTXG, -CONSTXG },
-			{ +CONSTXG, -CONSTXG, -CONSTXG },
-			{ +CONSTXG, +CONSTXG, -CONSTXG },
-			{ -CONSTXG, +CONSTXG, -CONSTXG },
-			{ -CONSTXG, -CONSTXG, +CONSTXG },
-			{ +CONSTXG, -CONSTXG, +CONSTXG },
-			{ +CONSTXG, +CONSTXG, +CONSTXG },
-			{ -CONSTXG, +CONSTXG, +CONSTXG } };
+	int *elem_type;
+	double *elem_stress;
+	double *elem_strain;
+	double *vars_new_aux;
 
-		double f_trial_max;
+	const double xg[8][3] = {
+		{ -CONSTXG, -CONSTXG, -CONSTXG },
+		{ +CONSTXG, -CONSTXG, -CONSTXG },
+		{ +CONSTXG, +CONSTXG, -CONSTXG },
+		{ -CONSTXG, +CONSTXG, -CONSTXG },
+		{ -CONSTXG, -CONSTXG, +CONSTXG },
+		{ +CONSTXG, -CONSTXG, +CONSTXG },
+		{ +CONSTXG, +CONSTXG, +CONSTXG },
+		{ -CONSTXG, +CONSTXG, +CONSTXG } };
 
-		void calc_ctan_lin();
-		material_t get_material(const int e) const;
+	double f_trial_max;
 
-		void get_elem_nodes(int n[npe], int ex, int ey, int ez = 0) const;
+	int nthreads;
 
-		void get_elem_displ(const double *u, double elem_disp[npe * dim],
-				    int ex, int ey, int ez = 0) const;
+	void calc_ctan_lin();
+	material_t get_material(const int e) const;
 
-		void get_strain(const double *u, int gp, double strain_gp[nvoi],
-				int ex, int ey, int ez = 0) const;
-		void get_stress(int gp, const double eps[nvoi], const double *vars_old,
-				double stress_gp[nvoi], int ex, int ey, int ez = 0) const;
+	void get_elem_nodes(int n[npe], int ex, int ey, int ez = 0) const;
 
-		int get_elem_type(int ex, int ey, int ez = 0) const;
-		void get_elem_rhs(const double *u, const double *vars_old,
-				  double be[npe * dim], int ex, int ey, int ez = 0) const;
+	void get_elem_displ(const double *u, double elem_disp[npe * dim],
+						int ex, int ey, int ez = 0) const;
 
-		void calc_ave_stress(double *u, double *vars_old,
-				     double stress_ave[nvoi]) const;
-		void calc_ave_strain(const double *u, double strain_ave[nvoi]) const;
-		void calc_fields(double *u, double *vars_old);
-		void calc_bmat(int gp, double bmat[nvoi][npe * dim]) const;
-		bool calc_vars_new(const double *u, double *vars_old, double *vars_new,
-				   double *f_trial_max);
+	void get_strain(const double *u, int gp, double strain_gp[nvoi],
+					int ex, int ey, int ez = 0) const;
+	void get_stress(int gp, const double eps[nvoi], const double *vars_old,
+					double stress_gp[nvoi], int ex, int ey, int ez = 0) const;
+
+	int get_elem_type(int ex, int ey, int ez = 0) const;
+	void get_elem_rhs(const double *u, const double *vars_old,
+					  double be[npe * dim], int ex, int ey, int ez = 0) const;
 
 		int newton_raphson(ell_matrix *A, double *b, double *u, double *du,
 				   const bool non_linear, const double strain[nvoi],
 				   const double *vars_old, newton_t *newton);
+	void calc_ave_stress(double *u, double *vars_old,
+						 double stress_ave[nvoi]) const;
+	void calc_ave_strain(const double *u, double strain_ave[nvoi]) const;
+	void calc_fields(double *u, double *vars_old);
+	void calc_bmat(int gp, double bmat[nvoi][npe * dim]) const;
+	bool calc_vars_new(const double *u, double *vars_old, double *vars_new,
+					   double *f_trial_max);
 
-		void get_elem_mat(const double *u, const double *vars_old,
-				  double Ae[npe * dim * npe * dim],
-				  int ex, int ey, int ez = 0) const;
+	void get_elem_mat(const double *u, const double *vars_old,
+					  double Ae[npe * dim * npe * dim],
+					  int ex, int ey, int ez = 0) const;
 
-		void set_displ_bc(const double strain[nvoi], double *u);
+	void set_displ_bc(const double strain[nvoi], double *u);
 
-		double assembly_rhs(const double *u, const double *vars_old, double *b);
-		void assembly_mat(ell_matrix *A, const double *u, const double *vars_old);
+	double assembly_rhs(const double *u, const double *vars_old, double *b);
+	void assembly_mat(ell_matrix *A, const double *u,
+					  const double *vars_old) const;
 
-		void write_vtu(double *u, double *vars_old, const char *filename);
+	void write_vtu(double *u, double *vars_old, const char *filename);
 
-		void get_dev_tensor(const double tensor[6], double tensor_dev[6]) const;
+	void get_dev_tensor(const double tensor[6], double tensor_dev[6]) const;
 
-		void plastic_get_stress(const material_t *material, const double eps[6],
-					const double *eps_p_old, const double *alpha_old,
-					double stress[6]) const;
+	void plastic_get_stress(const material_t *material, const double eps[6],
+							const double *eps_p_old, const double *alpha_old,
+							double stress[6]) const;
 
-		bool plastic_law(const material_t *material, const double eps[6],
-				 const double *eps_p_old, const double *alpha_old,
-				 double *_dl, double _normal[6], double _s_trial[6],
-				 double *_f_trial) const;
-		void plastic_get_ctan(const material_t *material, const double eps[nvoi],
-				      const double *eps_p_old, const double *alpha_old,
-				      double ctan[nvoi][nvoi]) const;
-		bool plastic_evolute(const material_t *material, const double eps[6],
-				     const double *eps_p_old, const double *alpha_old,
-				     double eps_p_new[6], double *alpha_new, double *f_trial) const;
+	bool plastic_law(const material_t *material, const double eps[6],
+					 const double *eps_p_old, const double *alpha_old,
+					 double *_dl, double _normal[6], double _s_trial[6],
+					 double *_f_trial) const;
+	void plastic_get_ctan(const material_t *material, const double eps[nvoi],
+						  const double *eps_p_old, const double *alpha_old,
+						  double ctan[nvoi][nvoi]) const;
+	bool plastic_evolute(const material_t *material, const double eps[6],
+						 const double *eps_p_old, const double *alpha_old,
+						 double eps_p_new[6], double *alpha_new, double *f_trial) const;
 
-		void isolin_get_ctan(const material_t *material, double ctan[nvoi][nvoi]) const;
-		void isolin_get_stress(const material_t *material, const double eps[6],
-				       double stress[6]) const;
+	void isolin_get_ctan(const material_t *material, double ctan[nvoi][nvoi]) const;
+	void isolin_get_stress(const material_t *material, const double eps[6],
+						   double stress[6]) const;
 
-	public:
+public:
 
-		micropp() = delete;
+	micropp() = delete;
 
-		micropp(const int ngp, const int size[3], const int micro_type,
+	micropp(const int ngp, const int size[3], const int micro_type,
 			const double *micro_params, const material_t *materials,
 			int coupling = ONE_WAY);
 
-		~micropp();
+	~micropp();
 
-		/* The most important functions */
-		void set_macro_strain(const int gp_id, const double *macro_strain);
-		void get_macro_stress(const int gp_id, double *macro_stress) const;
-		void get_macro_ctan(const int gp_id, double *macro_ctan) const;
-		void homogenize();
+	/* The most important functions */
+	void set_macro_strain(const int gp_id, const double *macro_strain);
+	void get_macro_stress(const int gp_id, double *macro_stress) const;
+	void get_macro_ctan(const int gp_id, double *macro_ctan) const;
+	void homogenize();
 
-		/* Extras */
-		int is_non_linear(const int gp_id) const;
-		int get_non_linear_gps(void) const;
-		double get_f_trial_max(void) const;
-		void get_sigma_solver_its(int gp_id, int sigma_solver_err[NR_MAX_ITS]) const;
-		void get_sigma_solver_err(int gp_id, double sigma_solver_err[NR_MAX_ITS]) const;
-		void get_sigma_newton_err(int gp_id, double sigma_nr_err[NR_MAX_ITS]) const;
-		int get_sigma_newton_its(int gp_id) const;
-		int get_cost(int gp_id) const;
-		void output(int gp_id, const char *filename);
-		void update_vars();
-		void print_info() const;
+	/* Extras */
+	int is_non_linear(const int gp_id) const;
+	int get_non_linear_gps(void) const;
+	double get_f_trial_max(void) const;
+	void get_sigma_solver_its(int gp_id, int sigma_solver_err[NR_MAX_ITS]) const;
+	void get_sigma_solver_err(int gp_id, double sigma_solver_err[NR_MAX_ITS]) const;
+	void get_sigma_newton_err(int gp_id, double sigma_nr_err[NR_MAX_ITS]) const;
+	int get_sigma_newton_its(int gp_id) const;
+	int get_cost(int gp_id) const;
+	void output(int gp_id, const char *filename);
+	void update_vars();
+	void print_info() const;
 };
 
 

@@ -1,0 +1,130 @@
+/*
+ * This source code is part of MicroPP: a finite element library
+ * to solve microstructural problems for composite materials.
+ *
+ * Copyright (C) - 2018 - Jimmy Aguilar Mena <kratsbinovish@gmail.com>
+ *                        Guido Giuntoli <gagiuntoli@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#ifndef TASKS_HPP
+#define TASKS_HPP
+
+#include <cstdlib>
+#include <cassert>
+
+#include "micro.hpp"
+#include "ell.hpp"
+
+#ifdef NANOS6
+
+#include "nanos6.h"
+
+static inline void *rrd_malloc(size_t size)
+{
+	void *ret = nanos_dmalloc(size, DMALLOC_RR, 0, NULL);
+	assert(ret != NULL);
+	dprintf("Using nanos6_dmalloc [%p -> %p] size %d\n",
+	        ret, (char*)ret + size, size);
+
+	return ret;
+}
+
+static inline void rrd_free(void *in)
+{
+	dprintf("Using nanos6_dfree\n");
+	nanos_dfree(in);
+}
+
+static inline void *rrl_malloc(size_t size)
+{
+	void *ret = nanos_lmalloc(size);
+	assert(ret != NULL);
+	dprintf("Using nanos6_lmalloc [%p -> %p] size %d\n",
+	        ret, (char*)ret + size, size);
+
+	return ret;
+}
+
+
+static inline void rrl_free(void *in)
+{
+	dprintf("Using nanos6_lfree\n");
+	nanos_lfree(in);
+}
+
+
+#define get_node_id() nanos_get_node_id()
+#define get_nodes_nr() nanos_get_nodes_nr()
+
+#else
+
+static inline void *rrd_malloc(size_t size)
+{
+	void *ret = malloc(size);
+	assert(ret != NULL);
+	dprintf("Using libc malloc [%p -> %p] size %d\n",
+	        ret, (char*)ret + size, size);
+
+	return ret;
+}
+
+static inline void rrd_free(void *in)
+{
+	dprintf("Using libc_free\n");
+	free(in);
+}
+
+static inline void *rrl_malloc(size_t size)
+{
+	void *ret = malloc(size);
+	assert(ret != NULL);
+	dprintf("Using libc_lmalloc [%p -> %p] size %d\n",
+	        ret, (char*)ret + size, size);
+
+	return ret;
+}
+
+
+static inline void rrl_free(void *in)
+{
+	dprintf("Using libc_lfree\n");
+	free(in);
+}
+
+#define get_node_id() 0
+#define get_nodes_nr() 1
+
+#endif
+
+template <int tdim>
+void homogenize_conditional_task(struct data self, const int nvoi,
+                                 int *ell_cols, const int ell_cols_size,
+                                 const material_t *material_list, const int numMaterials,
+                                 int *elem_type, int nelem,
+                                 gp_t<tdim> *gp_ptr,
+                                 int nndim, int num_int_vars,
+                                 const bool allocated);
+
+
+template <int tdim>
+void homogenize_weak_task(data self, const int nvoi,
+                          int *ell_cols, const int ell_cols_size,
+                          const material_t *material_list, const int numMaterials,
+                          int *elem_type, int nelem,
+                          gp_t<tdim> *gp_ptr, int nndim, int num_int_vars);
+
+
+#endif //TASKS_HPP

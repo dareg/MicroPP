@@ -31,63 +31,50 @@ using namespace std;
 
 const double strain[6] = { 1., 2., 3., 1., 1., 1. };
 
+class test_t : public micropp<3> {
+
+	public:
+		test_t(const int size[3], const int micro_type, const double micro_params[5],
+			   const material_t mat_params[2])
+			:micropp<3> (1, size, micro_type, micro_params, mat_params, NO_COUPLING)
+		{};
+
+		~test_t() {};
+
+		void assembly_and_solve(void) {
+
+			const int ns[3] = { nx, ny, nz };
+
+			double *b = (double *) calloc(nndim, sizeof(double));
+			double *du = (double *) calloc(nndim, sizeof(double));
+			double *u = (double *) calloc(nndim, sizeof(double));
+
+			double lerr, cg_err;
+
+			ell_matrix A;
+			ell_init(&A, ell_cols, dim, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
+
+			assembly_mat(&A, u, nullptr);
+			int cg_its = ell_solve_cgpd(&A, b, du, &cg_err);
+
+			for (int i = 0; i < nndim; ++i)
+				u[i] += du[i];
+
+			lerr = assembly_rhs(u, nullptr, b);
+			cout
+				<< "|RES| : " << lerr
+				<< " CG_ITS : " << cg_its
+				<< " CG_TOL : " << cg_err << endl;
+
+			ell_free(&A);
+			free(u);
+			free(b);
+			free(du);
+		};
+};
+
 int main (int argc, char *argv[])
 {
-	class test_t : public micropp<3> {
-
-		public:
-			test_t(const int size[3], const int micro_type, const double micro_params[5],
-			       const material_t mat_params[2])
-				:micropp<3> (1, size, micro_type, micro_params, mat_params, NO_COUPLING)
-			{};
-
-			~test_t() {};
-
-			void assembly_and_solve(void)
-			{
-
-				const int ns[3] = { nx, ny, nz };
-				const int nfield = dim;
-
-				ell_matrix A;  // Jacobian
-				ell_init(&A, nfield, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
-				double *b = (double *) calloc(nndim, sizeof(double));
-				double *du = (double *) calloc(nndim, sizeof(double));
-				double *u = (double *) calloc(nndim, sizeof(double));
-
-				double lerr, cg_err;
-
-				const int ns[3] = { nx, ny, nz };
-
-				ell_matrix A;
-				ell_init(&A, dim, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
-
-				double *u = (double *) calloc(nndim, sizeof(double));
-				double *du = (double *) malloc(nndim * sizeof(double));
-				double *b = (double *) malloc(nndim * sizeof(double));
-
-				set_displ_bc(strain, u);
-				lerr = assembly_rhs(u, nullptr, b);
-
-				assembly_mat(&A, u, nullptr);
-				int cg_its = ell_solve_cgpd(&A, b, du, &cg_err);
-
-				for (int i = 0; i < nndim; ++i)
-					u[i] += du[i];
-
-				lerr = assembly_rhs(u, nullptr, b);
-				cout
-					<< "|RES| : " << lerr
-					<< " CG_ITS : " << cg_its
-					<< " CG_TOL : " << cg_err << endl;
-
-				ell_free(&A);
-				free(b);
-				free(u);
-				free(du);
-			};
-
-	};
 
 	if (argc < 2) {
 		/* argv[1] (n) : Problem size
