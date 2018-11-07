@@ -79,7 +79,7 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 	elem_stress = (double *) calloc(nelem * nvoi, sizeof(double));
 	elem_strain = (double *) calloc(nelem * nvoi, sizeof(double));
 
-	assert(elem_stress && elem_strain && elem_type && vars_new_aux);
+	assert(elem_stress && elem_strain && elem_type);
 
 	for (int i = 0; i < nParams; i++)
 		micro_params[i] = _micro_params[i];
@@ -166,8 +166,7 @@ double micropp<tdim>::get_f_trial_max(void) const
 
 template <int tdim>
 void micropp<tdim>::get_sigma_solver_its(int gp_id,
-					 int sigma_solver_its[NR_MAX_ITS])
-	const
+					 int sigma_solver_its[NR_MAX_ITS]) const
 {
 	assert(gp_id < ngp);
 	assert(gp_id >= 0);
@@ -178,8 +177,7 @@ void micropp<tdim>::get_sigma_solver_its(int gp_id,
 
 template <int tdim>
 void micropp<tdim>::get_sigma_solver_err(int gp_id,
-					 double sigma_solver_err[NR_MAX_ITS])
-	const
+					 double sigma_solver_err[NR_MAX_ITS]) const
 {
 	assert(gp_id < ngp);
 	assert(gp_id >= 0);
@@ -190,8 +188,7 @@ void micropp<tdim>::get_sigma_solver_err(int gp_id,
 
 template <int tdim>
 void micropp<tdim>::get_sigma_newton_err(int gp_id,
-					 double sigma_newton_err[NR_MAX_ITS])
-	const
+					 double sigma_newton_err[NR_MAX_ITS]) const
 {
 	assert(gp_id < ngp);
 	assert(gp_id >= 0);
@@ -238,10 +235,9 @@ void micropp<tdim>::calc_ctan_lin()
 	for (int i = 0; i < nvoi; ++i) {
 
 		const int ns[3] = { nx, ny, nz };
-		const int nfield = dim;
 
 		ell_matrix A;  // Jacobian
-		ell_init(&A, nfield, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
+		ell_init(&A, ell_cols, dim, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
 		double *b = (double *) calloc(nndim, sizeof(double));
 		double *du = (double *) calloc(nndim, sizeof(double));
 		double *u = (double *) calloc(nndim, sizeof(double));
@@ -307,6 +303,7 @@ void micropp<tdim>::get_elem_rhs(const double *u,
 
 template <int tdim>
 void micropp<tdim>::get_elem_mat(const double *u,
+
 				 const double *vars_old,
 				 double Ae[npe * dim * npe * dim],
 				 int ex, int ey, int ez) const
@@ -326,10 +323,10 @@ void micropp<tdim>::get_elem_mat(const double *u,
 		double eps[6];
 		get_strain(u, gp, eps, ex, ey, ez);
 
-
 		if (material.plasticity) {
 			const double *eps_p_old = (vars_old) ? &vars_old[intvar_ix(e, gp, 0)] : nullptr;
 			const double *alpha_old = (vars_old) ? &vars_old[intvar_ix(e, gp, 6)] : nullptr;
+
 			plastic_get_ctan(&material, eps, eps_p_old, alpha_old, ctan);
 		} else {
 			isolin_get_ctan(&material, ctan);

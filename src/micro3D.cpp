@@ -23,7 +23,7 @@
 
 
 template <>
-void micropp<3>::set_displ_bc(const double eps[nvoi], double *u)
+void micropp<3>::set_displ_bc(const double eps[nvoi], double *u) const
 {
 	const double eps_t[dim][dim] = {
 		{       eps[0], 0.5 * eps[3], 0.5 * eps[4] },
@@ -145,8 +145,8 @@ void micropp<3>::calc_bmat(int gp, double bmat[nvoi][npe * dim]) const
 
 
 template<>
-double micropp<3>::assembly_rhs(const double *u, const double *int_vars_old,
-				double *b)
+double micropp<3>::assembly_rhs(const double *u, const double *old,
+								double *b) const
 {
 	INST_START;
 
@@ -166,7 +166,7 @@ double micropp<3>::assembly_rhs(const double *u, const double *int_vars_old,
 					for (int d = 0; d < dim; ++d)
 						index[j * dim + d] = n[j] * dim + d;
 
-				get_elem_rhs(u, int_vars_old, be, ex, ey, ez);
+				get_elem_rhs(u, old, be, ex, ey, ez);
 
 				for (int i = 0; i < npe * dim; ++i)
 					b[index[i]] += be[i];

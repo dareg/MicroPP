@@ -71,7 +71,6 @@ void micropp<tdim>::homogenize()
 		double *b = (double *) calloc(nndim, sizeof(double));
 		double *du = (double *) calloc(nndim, sizeof(double));
 		double *u = (double *) calloc(nndim, sizeof(double));
-		double *vars_new_aux = (double *) calloc(num_int_vars, sizeof(double));
 
 		newton_t newton;
 		newton.max_its = NR_MAX_ITS;
@@ -80,8 +79,16 @@ void micropp<tdim>::homogenize()
 
 		gp_t<tdim> * const gp_ptr = &gp_list[igp];
 
-		double *vars_new = (gp_ptr->allocated) ? gp_ptr->int_vars_k : vars_new_aux;
 		gp_ptr->cost = 0;
+
+        double *vars_new,  *vars_new_aux = nullptr;
+
+        if (gp_ptr->allocated) {
+            vars_new = gp_ptr->int_vars_k;
+        } else {
+	        vars_new_aux = (double *) malloc(num_int_vars * sizeof(double));
+            vars_new = vars_new_aux;
+        }
 
 		// SIGMA 1 Newton-Raphson
 		memcpy(u, gp_ptr->u_n, nndim * sizeof(double));
@@ -116,12 +123,12 @@ void micropp<tdim>::homogenize()
 		/* Updates <vars_new> and <f_trial_max> */
 		bool nl_flag = calc_vars_new(gp_ptr->u_k, gp_ptr->int_vars_n, vars_new, &f_trial_max);
 
-		if (nl_flag == true) {
-			if (gp_ptr->allocated == false) {
-				gp_ptr->allocate(num_int_vars);
-				memcpy(gp_ptr->int_vars_k, vars_new, num_int_vars * sizeof(double));
-			}
-		}
+        if (nl_flag) {
+            if (gp_ptr->allocated == false) {
+                gp_ptr->allocate(num_int_vars);
+                memcpy(gp_ptr->int_vars_k, vars_new, num_int_vars * sizeof(double));
+            }
+        }
 
 		if (gp_ptr->allocated && coupling == FULL) {
 
@@ -151,13 +158,15 @@ void micropp<tdim>::homogenize()
 
 			filter(gp_ptr->macro_ctan, nvoi * nvoi, FILTER_REL_TOL);
 
-		}
+        }
+
+        if (vars_new_aux)
+	        free(vars_new_aux);
 
 		ell_free(&A);
 		free(b);
 		free(u);
 		free(du);
-		free(vars_new_aux);
 	}
 }
 

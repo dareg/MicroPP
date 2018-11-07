@@ -23,7 +23,7 @@
 
 
 template <>
-void micropp<2>::set_displ_bc(const double eps[nvoi], double *u)
+void micropp<2>::set_displ_bc(const double eps[nvoi], double *u) const
 {
 	const double eps_t[dim][dim] = {
 		{ eps[0], 0.5 * eps[2] },
@@ -103,7 +103,7 @@ void micropp<2>::calc_bmat(int gp, double bmat[nvoi][npe *dim])	const
 
 template <>
 double micropp<2>::assembly_rhs(const double *u, const double *int_vars_old,
-								double *b)
+								double *b) const
 {
 	INST_START;
 
@@ -166,6 +166,7 @@ double micropp<2>::assembly_rhs(const double *u, const double *int_vars_old,
 
 	return norm;
 }
+
 
 template <>
 void micropp<2>::assembly_mat(ell_matrix *A, const double *u,

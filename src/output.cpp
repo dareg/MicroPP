@@ -41,8 +41,8 @@ void micropp<tdim>::output(int gp_id, const char *filename)
 
 
 template <int tdim>
-void micropp<tdim>::write_vtu(double *u, double *int_vars_old,
-			      const char *filename)
+void micropp<tdim>::write_vtu(double *u, const double *old,
+                              const char *filename)
 {
 	std::stringstream fname_vtu_s;
 	fname_vtu_s << filename << ".vtu";
@@ -162,12 +162,8 @@ void micropp<tdim>::write_vtu(double *u, double *int_vars_old,
 		for (int gp = 0; gp < npe; ++gp) {
 			double tmp = 0.0;
 			for (int v = 0; v < nvoi; ++v) {
-				if (int_vars_old != NULL) {
-					tmp += int_vars_old[intvar_ix(e, gp, v)] *\
-					       int_vars_old[intvar_ix(e, gp, v)];
-				} else {
-					tmp += 0.0;
-				}
+				if (old)
+					tmp += old[intvar_ix(e, gp, v)] * old[intvar_ix(e, gp, v)];
 			}
 			plasticity += sqrt(tmp);
 		}
@@ -179,12 +175,10 @@ void micropp<tdim>::write_vtu(double *u, double *int_vars_old,
 		<< "<DataArray type=\"Float64\" Name=\"hardening\" "
 		<< "NumberOfComponents=\"1\" format=\"ascii\">" << endl;
 	for (int e = 0; e < nelem; ++e) {
-		double hardening = 0.;
+		double hardening = 0.0;
 		for (int gp = 0; gp < npe; ++gp) {
-			if (int_vars_old != NULL) {
-				hardening += int_vars_old[intvar_ix(e, gp, 6)];
-			} else {
-				hardening += 0.0;
+			if (old) {
+				hardening += old[intvar_ix(e, gp, 6)];
 			}
 		}
 		file << hardening / npe << " ";
