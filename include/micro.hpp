@@ -117,20 +117,10 @@ class micropp {
 		int *elem_type;
 		double *elem_stress;
 		double *elem_strain;
-
-		const double xg[8][3] = {
-			{ -CONSTXG, -CONSTXG, -CONSTXG },
-			{ +CONSTXG, -CONSTXG, -CONSTXG },
-			{ +CONSTXG, +CONSTXG, -CONSTXG },
-			{ -CONSTXG, +CONSTXG, -CONSTXG },
-			{ -CONSTXG, -CONSTXG, +CONSTXG },
-			{ +CONSTXG, -CONSTXG, +CONSTXG },
-			{ +CONSTXG, +CONSTXG, +CONSTXG },
-			{ -CONSTXG, +CONSTXG, +CONSTXG } };
-
+		double *vars_new_aux;
 		double f_trial_max;
 
-		int nthreads;
+	protected:
 
 		void calc_ctan_lin();
 		material_t get_material(const int e) const;
