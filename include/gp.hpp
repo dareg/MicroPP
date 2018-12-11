@@ -22,68 +22,67 @@
 
 #include <cassert>
 #include <cstdlib>
+#include <cstring>
 
 #include "newton.hpp"
 
 template <int dim>
 class gp_t {
 
-	static constexpr int nvoi = dim * (dim + 1) / 2;  // 3, 6
+		static constexpr int nvoi = dim * (dim + 1) / 2;  // 3, 6
 
 	public:
+		double macro_strain[nvoi];
+		double macro_stress[nvoi];
+		double *macro_ctan;
 
-	double macro_strain[nvoi];
-	double macro_stress[nvoi];
-	double macro_ctan[nvoi * nvoi];
+		bool allocated; // flag for memory optimization
 
-	bool allocated; // flag for memory optimization
+		double *int_vars_n; // vectors for calculations
+		double *int_vars_k;
+		double *u_n;
+		double *u_k;
 
-	double *int_vars_n; // vectors for calculations
-	double *int_vars_k;
-	double *u_n;
-	double *u_k;
+		newton_t newton;
+		long int cost;
 
-	newton_t newton;
-	long int cost;
+		gp_t() = delete;
 
-	gp_t():
-		u_n(nullptr),
-		u_k(nullptr),
-		int_vars_n(nullptr),
-		int_vars_k(nullptr),
-		allocated(false)
-	{}
+		void init(double *_int_vars_n, double *_int_vars_k,
+		          double *_u_n, double *_u_k, int nndim,
+		          double *ctan_lin)
+		{
+			assert(nndim > 0);
+			allocated = false;
 
-	~gp_t()
-	{
-		free(u_n);
-		free(u_k);
-		if (allocated) {
-			free(int_vars_n);
-			free(int_vars_k);
+			int_vars_n = _int_vars_n;
+			int_vars_k = _int_vars_k;
+
+			u_n = _u_n;
+			u_k = _u_k;
+
+			macro_ctan = ctan_lin;
+
+			memset(_u_n, 0, nndim * sizeof(double));
 		}
-	}
 
-	void allocate(const int num_int_vars)
-	{
-		assert(!allocated);
+		~gp_t()	{}
 
-		int_vars_n = (double *) calloc(num_int_vars, sizeof(double));
-		int_vars_k = (double *) calloc(num_int_vars, sizeof(double));
-
-		allocated = (int_vars_n && int_vars_k);
-		assert(allocated);
-	}
+		void allocate()
+		{
+			assert(!allocated);
+			allocated = true;
+		}
 
 
-	void update_vars()
-	{
-		double *tmp = int_vars_n;
-		int_vars_n = int_vars_k;
-		int_vars_k = tmp;
+		void update_vars()
+		{
+			double *tmp = int_vars_n;
+			int_vars_n = int_vars_k;
+			int_vars_k = tmp;
 
-		tmp = u_n;
-		u_n = u_k;
-		u_k = tmp;
-	}
+			tmp = u_n;
+			u_n = u_k;
+			u_k = tmp;
+		}
 };

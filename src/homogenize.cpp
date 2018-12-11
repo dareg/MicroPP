@@ -125,7 +125,7 @@ void micropp<tdim>::homogenize()
 
         if (nl_flag) {
             if (gp_ptr->allocated == false) {
-                gp_ptr->allocate(num_int_vars);
+                gp_ptr->allocate();
                 memcpy(gp_ptr->int_vars_k, vars_new, num_int_vars * sizeof(double));
             }
         }

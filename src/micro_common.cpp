@@ -21,6 +21,7 @@
 
 
 #include "micro.hpp"
+#include "tasks.hpp"
 
 
 template<int tdim>
@@ -56,49 +57,54 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 	wg(((tdim == 3) ? dx * dy * dz : dx * dy) / npe),
 	vol_tot((tdim == 3) ? lx * ly * lz : lx * ly),
 	ivol(1.0 / (wg * npe)),
-	micro_type(_micro_type), num_int_vars(nelem * npe * NUM_VAR_GP)
+	micro_type(_micro_type), num_int_vars(nelem * npe * NUM_VAR_GP),
+	copy(false),
+	f_trial_max(-1.0e50)
 {
 	INST_CONSTRUCT; // Initialize the Intrumentation
 
-	gp_list = new gp_t<tdim>[ngp]();
-	for (int gp = 0; gp < ngp; ++gp) {
-		gp_list[gp].u_n = (double *) calloc(nndim, sizeof(double));
-		gp_list[gp].u_k = (double *) calloc(nndim, sizeof(double));
-	}
-
-	int nParams = 4;
+	const int nParams = 4;
 	numMaterials = 2;
 
-	material_list = (material_t *) malloc(numMaterials * sizeof(material_t));
-	{
-		for (int i = 0; i < numMaterials; ++i)
-			material_list[i] = _materials[i];
+	material_list = (material_t *) rrd_malloc(numMaterials * sizeof(material_t));
+
+	for (int i = 0; i < numMaterials; ++i) {
+		material_t *tpmaterial = &material_list[i];
+		material_t tmaterial = _materials[i];
+
+		#pragma oss task out(*material_ptr) label(init_material)
+		{
+			dprintf("material[%d] :  Node %d/%d\n",
+			        i, get_node_id(), get_nodes_nr());
+			*tpmaterial = tmaterial;
+		}
 	}
 
-	elem_type = (int *) calloc(nelem, sizeof(int));
-	elem_stress = (double *) calloc(nelem * nvoi, sizeof(double));
-	elem_strain = (double *) calloc(nelem * nvoi, sizeof(double));
-
-	assert(elem_stress && elem_strain && elem_type);
-
-	for (int i = 0; i < nParams; i++)
-		micro_params[i] = _micro_params[i];
-
-	for (int i = 0; i < numMaterials; ++i)
-		material_list[i] = _materials[i];
+	elem_type = (int *) rrd_malloc(nelem * sizeof(int));
 
 	for (int ez = 0; ez < nez; ++ez) {
 		for (int ey = 0; ey < ney; ++ey) {
 			for (int ex = 0; ex < nex; ++ex) {
 				const int e_i = glo_elem(ex, ey, ez);
-				elem_type[e_i] = get_elem_type(ex, ey, ez);
+
+				int *type_ptr = &elem_type[e_i];
+				int type = get_elem_type(ex, ey, ez);
+
+				#pragma oss task out(*type_ptr) label(init_type)
+				*type_ptr = type;
 			}
 		}
 	}
 
+	elem_stress = (double *) rrd_malloc(nelem * nvoi * sizeof(double));
+	elem_strain = (double *) rrd_malloc(nelem * nvoi * sizeof(double));
+	assert(elem_stress && elem_strain && elem_type);
+
+	for (int i = 0; i < nParams; i++)
+		micro_params[i] = _micro_params[i];
+
 	const int ns[3] = { nx, ny, nz };
 	const int nfield = dim;
-
 	ell_cols = ell_init_cols(dim, dim, ns, &ell_cols_size);
 
 	{
@@ -110,30 +116,81 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 		free(u);
 	}
 
+	const int tnvoi2 = nvoi * nvoi;
+	ctan_lin = (double *) rrd_malloc(tnvoi2 * sizeof(double));
+	double *tpctan_lin = ctan_lin;
+
 	memset(ctan_lin, 0.0, nvoi * nvoi * sizeof(double));
-	if (coupling != NO_COUPLING)
+
+	if (coupling != NO_COUPLING) {
+
+		int *tpell_cols = ell_cols;
+		const int tell_cols_size = ell_cols_size;
+
+		material_t *tpmaterial = material_list;
+		const int tnumMaterials = numMaterials;
+
+		int *tpelem_type = elem_type;
+		const int tnelem = nelem;
+
+		#pragma oss task in(tpell_cols_ptr[0; tell_cols_size]) \
+			in(tpmaterial_ptr[0; tnumMaterials]) \
+			in(tpelem_type[0; tnelem]) \
+			out(tpctan_lin[0;tnvoi2]) label(calc_ctan)
 		calc_ctan_lin();
+	}
 
-	for (int gp = 0; gp < ngp; ++gp)
-		memcpy(gp_list[gp].macro_ctan, ctan_lin, nvoi * nvoi * sizeof(double));
+	gp_list = (gp_t<tdim> *) rrd_malloc(ngp * sizeof(gp_t<tdim>));
 
-	f_trial_max = -1.0e50;
+	dint_vars_n = (double *) rrd_malloc(ngp * num_int_vars * sizeof(double));
+	dint_vars_k = (double *) rrd_malloc(ngp * num_int_vars * sizeof(double));
 
+	du_n = (double *) rrd_malloc(ngp * nndim * sizeof(double));
+	du_k = (double *) rrd_malloc(ngp * nndim * sizeof(double));
+
+	for (int gp = 0; gp < ngp; gp++) {
+
+		gp_t<tdim> *tpgp = &gp_list[gp];
+
+		double *tv_n = &dint_vars_n[num_int_vars * gp];
+		double *tv_k = &dint_vars_k[num_int_vars * gp];
+
+		double *tu_n = &du_n[nndim * gp];
+		double *tu_k = &du_k[nndim * gp];
+
+		const int tnndim = nndim;
+
+		#pragma oss task out(tpgp[0]) in(tpctan_lin[0;tnvoi2]) \
+			out(tu_n[0;nndim]) out(tu_k[0;nndim]) label(init_gp)
+		tpgp->init(tv_n, tv_k, tu_n, tu_k, tnndim, tpctan_lin);
+	}
 }
 
 
 template <int tdim>
 micropp<tdim>::~micropp()
 {
+	if (copy)
+		return;
+
 	INST_DESTRUCT;
 
-	free(elem_stress);
-	free(elem_strain);
-	free(elem_type);
+	rrd_free(ctan_lin);
+	rrd_free(ell_cols);
 
-	free(ell_cols);
+	rrd_free(elem_strain);
+	rrd_free(elem_stress);
 
-	delete [] gp_list;
+	rrd_free(elem_type);
+	rrd_free(material_list);
+
+	rrd_free(du_k);
+	rrd_free(du_n);
+
+	rrd_free(dint_vars_k);
+	rrd_free(dint_vars_n);
+
+	rrd_free(gp_list);
 }
 
 

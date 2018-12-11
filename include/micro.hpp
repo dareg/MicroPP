@@ -100,6 +100,8 @@ class micropp {
 		const double special_param, wg, ivol;
 
 		const int micro_type, num_int_vars;
+		const bool copy;
+
 		gp_t<tdim> *gp_list;
 
 		int coupling;
@@ -107,7 +109,7 @@ class micropp {
 		double micro_params[5];
 		int numMaterials;
 		material_t *material_list;
-		double ctan_lin[nvoi * nvoi];
+		double *ctan_lin;
 
 		ell_matrix A0; // Linear Jacobian (constant)
 
@@ -120,8 +122,9 @@ class micropp {
 		double *vars_new_aux;
 		double f_trial_max;
 
-	protected:
+		double *du_n, *du_k, *dint_vars_n, *dint_vars_k;
 
+	protected:
 		void calc_ctan_lin();
 		material_t get_material(const int e) const;
 
