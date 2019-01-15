@@ -78,6 +78,7 @@ void micropp<tdim>::homogenize()
 		newton.rel_tol = NR_REL_TOL;
 
 		gp_t<tdim> * const gp_ptr = &gp_list[igp];
+		int ierr;
 
 		gp_ptr->cost = 0;
 
@@ -160,14 +161,13 @@ void micropp<tdim>::homogenize()
 
         }
 
+        free(u);
+        free(du);
+        free(b);
+
         if (vars_new_aux)
 	        free(vars_new_aux);
-
-		ell_free(&A);
-		free(b);
-		free(u);
-		free(du);
-	}
+    }
 }
 
 
