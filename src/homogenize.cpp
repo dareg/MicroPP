@@ -24,6 +24,7 @@
 
 #include "instrument.hpp"
 #include "micro.hpp"
+#include "gp.hpp"
 
 
 template <int tdim>
@@ -32,26 +33,45 @@ void micropp<tdim>::set_macro_strain(const int gp_id,
 {
 	assert(gp_id >= 0);
 	assert(gp_id < ngp);
-	memcpy(gp_list[gp_id].macro_strain, macro_strain, nvoi * sizeof(double));
+
+	double *tpgp_macro_strain = gp_list[gp_id].macro_strain;
+	const int tnvoi = nvoi;
+
+	#pragma oss task out(tpgp_macro_strain[0; tnvoi]) in(macro_strain[0; tnvoi])
+	memcpy(tpgp_macro_strain, macro_strain, tnvoi * sizeof(double));
+
 }
 
 
 template <int tdim>
-void micropp<tdim>::get_macro_stress(const int gp_id,
-				     double *macro_stress) const
+void micropp<tdim>::get_macro_stress(const int gp_id, double *macro_stress) const
 {
-	assert(gp_id >= 0);
-	assert(gp_id < ngp);
-	memcpy(macro_stress, gp_list[gp_id].macro_stress, nvoi * sizeof(double));
+	INST_START;
+
+    assert(gp_id >= 0);
+    assert(gp_id < ngp);
+
+	double *tpgp_macro_stress = gp_list[gp_id].macro_stress;
+	const int tnvoi = nvoi;
+
+	#pragma oss task in(tpgp_macro_stress[0; tnvoi]) out(macro_stress[0; tnvoi])
+    memcpy(macro_stress, tpgp_macro_stress, tnvoi * sizeof(double));
 }
 
 
 template <int tdim>
 void micropp<tdim>::get_macro_ctan(const int gp_id, double *macro_ctan) const
 {
-	assert(gp_id >= 0);
-	assert(gp_id < ngp);
-	memcpy(macro_ctan, gp_list[gp_id].macro_ctan, nvoi * nvoi * sizeof(double));
+	INST_START;
+
+    assert(gp_id >= 0);
+    assert(gp_id < ngp);
+
+	double *tpgp_macro_ctan = gp_list[gp_id].macro_ctan;
+	const int tnvoi2 = nvoi * nvoi;
+
+	#pragma oss task in(tpgp_macro_ctan[0; tnvoi2]) out(macro_ctan[0; tnvoi2])
+    memcpy(macro_ctan, tpgp_macro_ctan, tnvoi2 * sizeof(double));
 }
 
 
@@ -63,112 +83,182 @@ void micropp<tdim>::homogenize()
 	#pragma omp parallel for schedule(dynamic,1)
 	for (int igp = 0; igp < ngp; ++igp) {
 
-		const int ns[3] = { nx, ny, nz };
+		const int lnvoi = nvoi;
+		int *tpell_cols = ell_cols;
+		const int tell_cols_size = ell_cols_size;
 
-		ell_matrix A;
-		ell_init(&A, ell_cols, dim, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
+		material_t *tpmaterial = material_list;
+		const int tnumMaterials = numMaterials;
 
-		double *b = (double *) calloc(nndim, sizeof(double));
-		double *du = (double *) calloc(nndim, sizeof(double));
-		double *u = (double *) calloc(nndim, sizeof(double));
+		int *tpelem_type = elem_type;
+		const int tnelem = nelem;
 
-		newton_t newton;
-		newton.max_its = NR_MAX_ITS;
-		newton.max_tol = NR_MAX_TOL;
-		newton.rel_tol = NR_REL_TOL;
+		gp_t<tdim> *gp_ptr = &gp_list[igp];
+		const int tnndim = nndim;
+		const int tnum_int_vars = num_int_vars;
 
-		gp_t<tdim> * const gp_ptr = &gp_list[igp];
-		int ierr;
+		homogenize_weak_task(lnvoi,
+							 tpell_cols, tell_cols_size,
+							 tpmaterial, tnumMaterials,
+							 tpelem_type, tnelem,
+							 gp_ptr, tnndim, tnum_int_vars);
+	}
+}
 
-		gp_ptr->cost = 0;
 
-        double *vars_new,  *vars_new_aux = nullptr;
+template <int tdim>
+void micropp<tdim>::homogenize_weak_task(int nvoi,
+										 int *ell_cols, const int ell_cols_size,
+										 const material_t *material_list,
+										 const int numMaterials,
+										 int *elem_type, int nelem,
+										 gp_t<tdim> *gp_ptr, int nndim,
+										 int num_int_vars)
+{
+	double *tpint_vars_n = gp_ptr->int_vars_k;
+	double *tpu_k = gp_ptr->u_k;
 
-        if (gp_ptr->allocated) {
-            vars_new = gp_ptr->int_vars_k;
-        } else {
-	        vars_new_aux = (double *) malloc(num_int_vars * sizeof(double));
-            vars_new = vars_new_aux;
-        }
+	if (gp_ptr->allocated) {
+		#pragma oss task in(this[0])					\
+			in(ell_cols[0; ell_cols_size])				\
+			in(material_list[0; numMaterials])			\
+			in(elem_type[0; nelem])						\
+														\
+			inout(gp_ptr[0])							\
+			inout(tpu_k[0; nndim])						\
+			inout(tpint_vars_n[0; num_int_vars])
+		homogenize_conditional_task(nvoi,
+									ell_cols, ell_cols_size,
+									material_list, numMaterials,
+									elem_type, nelem,
+									gp_ptr, nndim, num_int_vars,
+									true);
+	} else {
+		#pragma oss task in(this[0])					\
+			in(ell_cols[0; ell_cols_size])				\
+			in(material_list[0; numMaterials])			\
+			in(elem_type[0; nelem])						\
+														\
+			inout(gp_ptr[0])							\
+			out(tpu_k[0; nndim])						\
+			out(tpint_vars_n[0; num_int_vars])
+		homogenize_conditional_task(nvoi,
+									ell_cols, ell_cols_size,
+									material_list, numMaterials,
+									elem_type, nelem,
+									gp_ptr, nndim, num_int_vars,
+									false);
+	}
+}
 
-		// SIGMA 1 Newton-Raphson
-		memcpy(u, gp_ptr->u_n, nndim * sizeof(double));
+template <int tdim>
+void micropp<tdim>::homogenize_conditional_task(const int nvoi,
+												int *ell_cols,
+												const int ell_cols_size,
+												const material_t *material_list,
+												const int numMaterials,
+												int *elem_type, int nelem,
+												gp_t<tdim> *gp_ptr,
+												int nndim, int num_int_vars,
+												const bool allocated)
+{
+	newton_t newton;
+	newton.max_its = NR_MAX_ITS;
+	newton.max_tol = NR_MAX_TOL;
+	newton.rel_tol = NR_REL_TOL;
 
-		newton_raphson(&A, b, u, du,
+	int ierr;
+
+	double *u = (double *) malloc(nndim * sizeof(double));
+	double *du = (double *) malloc(nndim * sizeof(double));
+	double *b = (double *) malloc(nndim * sizeof(double));
+	const int ns[3] = { nx, ny, nz };
+
+	ell_matrix A;
+	ell_init(&A, ell_cols, dim, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
+
+	int newton_its, solver_its[NR_MAX_ITS];
+	double newton_err[NR_MAX_ITS], solver_err[NR_MAX_ITS];
+
+	gp_ptr->cost = 0;
+
+	double *vars_new,  *vars_new_aux = nullptr;
+
+	if (gp_ptr->allocated)
+		vars_new = gp_ptr->int_vars_k;
+	else
+		vars_new = vars_new_aux = (double *) malloc(num_int_vars * sizeof(double));
+
+	// SIGMA 1 Newton-Raphson
+	memcpy(u, gp_ptr->u_n, nndim * sizeof(double));
+
+	newton_raphson(&A, b, u, du,
 			       gp_ptr->allocated, gp_ptr->macro_strain,
 			       gp_ptr->int_vars_n, &newton);
 
-		memcpy(gp_ptr->u_k, u, nndim * sizeof(double));
-		gp_ptr->newton = newton;
+	memcpy(gp_ptr->u_k, u, nndim * sizeof(double));
+	gp_ptr->newton = newton;
 
-		for (int i = 0; i < newton.its; ++i)
-			gp_ptr->cost += newton.solver_its[i];
+	for (int i = 0; i < newton.its; ++i)
+		gp_ptr->cost += newton.solver_its[i];
 
-		if (coupling == ONE_WAY) {
+	if (coupling == ONE_WAY) {
 
-			double *stress = gp_ptr->macro_stress;
-			double *strain = gp_ptr->macro_strain;
-			memset (stress, 0.0, nvoi * sizeof(double));
-			for (int i = 0; i < nvoi; ++i) {
-				for (int j = 0; j < nvoi; ++j)
-					stress[i] += ctan_lin[i * nvoi + j] * strain[j];
-			}
+		double *stress = gp_ptr->macro_stress;
+		double *strain = gp_ptr->macro_strain;
+		memset (stress, 0.0, nvoi * sizeof(double));
+		for (int i = 0; i < nvoi; ++i) {
+			for (int j = 0; j < nvoi; ++j)
+				stress[i] += ctan_lin[i * nvoi + j] * strain[j];
+		}
 
-		} else if (coupling == FULL || coupling == NO_COUPLING) {
+	} else if (coupling == FULL || coupling == NO_COUPLING) {
 
-			calc_ave_stress(gp_ptr->u_k, gp_ptr->int_vars_n, gp_ptr->macro_stress);
-			filter(gp_ptr->macro_stress, nvoi, FILTER_REL_TOL);
+		calc_ave_stress(gp_ptr->u_k, gp_ptr->int_vars_n, gp_ptr->macro_stress);
+		filter(gp_ptr->macro_stress, nvoi, FILTER_REL_TOL);
+	}
+
+	bool nl_flag = calc_vars_new(gp_ptr->u_k, gp_ptr->int_vars_n, vars_new, &f_trial_max);
+
+	if (nl_flag && (gp_ptr->allocated == false)) {
+		gp_ptr->allocate();
+		memcpy(gp_ptr->int_vars_k, vars_new, num_int_vars * sizeof(double));
+	}
+
+	if (gp_ptr->allocated && coupling == FULL) {
+		// CTAN 3/6 Newton-Raphsons in 2D/3D
+		double eps_1[6], sig_0[6], sig_1[6];
+
+		memcpy(u, gp_ptr->u_k, nndim * sizeof(double));
+		memcpy(sig_0, gp_ptr->macro_stress, nvoi * sizeof(double));
+
+		for (int i = 0; i < nvoi; ++i) {
+
+			memcpy(eps_1, gp_ptr->macro_strain, nvoi * sizeof(double));
+			eps_1[i] += D_EPS_CTAN_AVE;
+
+			newton_raphson(&A, b, u, du,
+						   true, eps_1, gp_ptr->int_vars_n, &newton);
+
+			calc_ave_stress(u, gp_ptr->int_vars_n, sig_1);
+
+			for (int v = 0; v < nvoi; ++v)
+				gp_ptr->macro_ctan[v * nvoi + i] =
+					(sig_1[v] - sig_0[v]) / D_EPS_CTAN_AVE;
 
 		}
 
-		/* Updates <vars_new> and <f_trial_max> */
-		bool nl_flag = calc_vars_new(gp_ptr->u_k, gp_ptr->int_vars_n, vars_new, &f_trial_max);
+		filter(gp_ptr->macro_ctan, nvoi * nvoi, FILTER_REL_TOL);
+	}
 
-        if (nl_flag) {
-            if (gp_ptr->allocated == false) {
-                gp_ptr->allocate();
-                memcpy(gp_ptr->int_vars_k, vars_new, num_int_vars * sizeof(double));
-            }
-        }
+	free(u);
+	free(du);
+	free(b);
 
-		if (gp_ptr->allocated && coupling == FULL) {
-
-			// CTAN 3/6 Newton-Raphsons in 2D/3D
-			double eps_1[6], sig_0[6], sig_1[6];
-
-			memcpy(u, gp_ptr->u_k, nndim * sizeof(double));
-			memcpy(sig_0, gp_ptr->macro_stress, nvoi * sizeof(double));
-
-			for (int i = 0; i < nvoi; ++i) {
-
-				memcpy(eps_1, gp_ptr->macro_strain, nvoi * sizeof(double));
-				eps_1[i] += D_EPS_CTAN_AVE;
-
-				newton_raphson(&A, b, u, du,
-					       true, eps_1, gp_ptr->int_vars_n, &newton);
-
-				for (int i = 0; i < newton.its; ++i)
-					gp_ptr->cost += newton.solver_its[i];
-
-				calc_ave_stress(u, gp_ptr->int_vars_n, sig_1);
-
-				for (int v = 0; v < nvoi; ++v)
-					gp_ptr->macro_ctan[v * nvoi + i] =
-						(sig_1[v] - sig_0[v]) / D_EPS_CTAN_AVE;
-			}
-
-			filter(gp_ptr->macro_ctan, nvoi * nvoi, FILTER_REL_TOL);
-
-        }
-
-        free(u);
-        free(du);
-        free(b);
-
-        if (vars_new_aux)
-	        free(vars_new_aux);
-    }
+	if (vars_new_aux)
+		free(vars_new_aux);
 }
+
 
 
 template <int tdim>
@@ -176,9 +266,15 @@ void micropp<tdim>::update_vars()
 {
 	INST_START;
 
-	for (int igp = 0; igp < ngp; ++igp)
-		gp_list[igp].update_vars();
+	gp_t<tdim> *tpgp = gp_list;
+
+    for (int igp = 0; igp < ngp; ++igp){
+		#pragma oss task inout(tpgp[igp])
+        tpgp[igp].update_vars();
+	}
 }
+
+
 
 
 template class micropp<2>;

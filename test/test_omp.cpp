@@ -111,12 +111,5 @@ int main(int argc, char **argv)
 
 	}
 
-#ifdef _OPENMP
-	time = omp_get_wtime() - time;
-#else
-	time = clock() - time;
-#endif
-	printf("time = %lf\n", time);
-
 	return 0;
 }

@@ -44,7 +44,7 @@ int *ell_init_cols(const int nfield, const int dim, const int ns[3],
 	const int size = num_nodes * nfield * nn * nfield;
 	*ell_cols_size = size;
 
-	int *cols = (int *) malloc((size) * sizeof(int));
+	int *cols = (int *) rrd_malloc(size * sizeof(int));
 
 	#pragma oss task weakout(cols[0; size]) label(init_ell_cols_weak)
 	{
@@ -112,7 +112,7 @@ int *ell_init_cols(const int nfield, const int dim, const int ns[3],
 
 				#pragma oss task out(cols[slice * start; slice * size])
 				{
-					dprintf("col_init[%d] in node: %d\n", t, get_node_id());
+					dbprintf("col_init[%d] in node: %d\n", t, get_node_id());
 
 					for (int zi = start; zi < start + size; ++zi) {
 						for (int yi = 0; yi < ny; ++yi) {

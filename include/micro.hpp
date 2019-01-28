@@ -35,13 +35,11 @@
 #include "util.hpp"
 #include "ell.hpp"
 #include "material.hpp"
-#include "gp.hpp"
 #include "instrument.hpp"
 #include "newton.hpp"
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+#include "gp.hpp"
+#include "tasks.hpp"
 
 #define MAX_DIM         3
 #define MAX_MATS        10
@@ -92,16 +90,18 @@ class micropp {
 		static constexpr int npe = mypow(2, dim);         // 4, 8
 		static constexpr int nvoi = dim * (dim + 1) / 2;  // 3, 6
 
-		const int ngp, nx, ny, nz, nn, nndim;
-		const int nex, ney, nez, nelem;
-		const double lx, ly, lz;
-		const double dx, dy, dz;
-		const double vol_tot;
-		const double special_param, wg, ivol;
+		// Constant members
+		int ngp, nx, ny, nz, nn, nndim;
+		int nex, ney, nez, nelem;
+		double lx, ly, lz;
+		double dx, dy, dz;
+		double vol_tot;
+		double special_param, wg, ivol;
 
-		const int micro_type, num_int_vars;
-		const bool copy;
+		int micro_type, num_int_vars;
+		bool copy;
 
+		// Non constant members
 		gp_t<tdim> *gp_list;
 
 		int coupling;
@@ -145,6 +145,7 @@ class micropp {
 		int newton_raphson(ell_matrix *A, double *b, double *u, double *du,
 						   const bool non_linear, const double strain[nvoi],
 						   const double *vars_old, newton_t *newton);
+
 		void calc_ave_stress(double *u, double *vars_old,
 							 double stress_ave[nvoi]) const;
 		void calc_ave_strain(const double *u, double strain_ave[nvoi]) const;
@@ -186,9 +187,15 @@ class micropp {
 		void isolin_get_ctan(const material_t *material, double ctan[nvoi][nvoi]) const;
 		void isolin_get_stress(const material_t *material, const double eps[6],
 							   double stress[6]) const;
+
 	public:
 
+		static void* operator new(std::size_t sz);
+		static void operator delete(void *p);
+
 		micropp() = delete;
+
+		micropp(const micropp &);
 
 		micropp(const int ngp, const int size[3], const int micro_type,
 				const double *micro_params, const material_t *materials,
@@ -206,14 +213,36 @@ class micropp {
 		int is_non_linear(const int gp_id) const;
 		int get_non_linear_gps(void) const;
 		double get_f_trial_max(void) const;
+
+		int get_nl_flag(const int gp_id) const;
+
 		void get_sigma_solver_its(int gp_id, int sigma_solver_err[NR_MAX_ITS]) const;
 		void get_sigma_solver_err(int gp_id, double sigma_solver_err[NR_MAX_ITS]) const;
 		void get_sigma_newton_err(int gp_id, double sigma_nr_err[NR_MAX_ITS]) const;
+
 		int get_sigma_newton_its(int gp_id) const;
+
 		int get_cost(int gp_id) const;
+
 		void output(int gp_id, const char *filename);
 		void update_vars();
 		void print_info() const;
+
+		void homogenize_weak_task(const int nvoi,
+								  int *ell_cols, const int ell_cols_size,
+								  const material_t *material_list, const int numMaterials,
+								  int *elem_type, int nelem,
+								  gp_t<tdim> *gp_ptr, int nndim, int num_int_vars);
+
+		void homogenize_conditional_task(const int nvoi,
+										 int *ell_cols, const int ell_cols_size,
+										 const material_t *material_list, const int numMaterials,
+										 int *elem_type, int nelem,
+										 gp_t<tdim> *gp_ptr,
+										 int nndim, int num_int_vars,
+										 const bool allocated);
+
+
 };
 
 

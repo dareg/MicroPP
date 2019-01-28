@@ -24,17 +24,19 @@
 
 // Debug print macro.
 #ifdef NDEBUG
-#define dprintf(...)
+#define dbprintf(...)
 #else
-#define dprintf(...) fprintf(stderr, __VA_ARGS__)
+#define dbprintf(...) fprintf(stderr, __VA_ARGS__)
 #endif
 
-
-#include <vector>
 #include <iostream>
+#include <vector>
 #include <fstream>
 #include <numeric>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 #include <cmath>
 #include <ctime>
@@ -77,12 +79,32 @@ constexpr int mypow(int v, int e)
 }
 
 
-inline void print_vec(const double *vec, int n, const char file_name[])
+inline void print_matvec(const double *vec, const int rows, const int cols,
+                      FILE *out = NULL)
 {
-	FILE *file = fopen(file_name, "w");
+	for (int i = 0; i < rows; ++i) {
+		fprintf(out, "\n[ ");
+		for (int j = 0; j < cols; ++j)
+			fprintf(out, "%lf, ", vec[i * cols + j]);
+		fprintf(out, "]\n");
+	}
+}
+
+inline void print_vec(const double *vec, int n, const char file_name[] = "")
+{
+	FILE *file = NULL;
+	if (strlen(file_name) == 0)
+		file = fopen(file_name, "w");
+	else
+		file = stdout;
+
+	assert(file != NULL);
+
 	for (int i = 0; i < n; ++i)
 		fprintf(file, "[%lf]\n", vec[i]);
-	fclose(file);
+
+	if (file && file != stdout)
+		fclose(file);
 }
 
 template <int tdim>

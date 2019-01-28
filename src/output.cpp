@@ -24,6 +24,8 @@
 #include <sstream>
 #include <cmath>
 #include "micro.hpp"
+#include "gp.hpp"
+
 
 using namespace std;
 
@@ -35,8 +37,36 @@ void micropp<tdim>::output(int gp_id, const char *filename)
 	assert(gp_id < ngp);
 	assert(gp_id >= 0);
 
-	calc_fields(gp_list[gp_id].u_k, gp_list[gp_id].int_vars_n);
-	write_vtu(gp_list[gp_id].u_k, gp_list[gp_id].int_vars_n, filename);
+	gp_t<tdim> *tpgp = &gp_list[gp_id];
+
+	material_t *tpmaterial = material_list;
+	const int tnumMaterials = numMaterials;
+
+	int *tpelem_type = elem_type;
+	const int tnelem = nelem;
+
+	double *tpu_k = &du_k[nndim * gp_id];
+	const int tnndim = nndim;
+
+	double *tpint_vars_n = &dint_vars_n[num_int_vars * gp_id];
+	const int tnum_int_vars = num_int_vars;
+
+	double *tpelem_stress = elem_stress;
+	double *tpelem_strain = elem_strain;
+	const int nelemnvoi = nelem * nvoi;
+
+	#pragma oss task in(material_list[0; numMaterials])					\
+		in(tpelem_type[0; tnelem])										\
+																		\
+		in(tpgp[0])														\
+		in(tpu_k[0; tnndim])											\
+		in(tpint_vars_n[0; tnum_int_vars])								\
+		out(tpelem_stress[0; nelemnvoi])								\
+		out(tpelem_strain[0; nelemnvoi])
+	{
+		calc_fields(tpu_k, tpint_vars_n);
+		write_vtu(tpu_k, tpint_vars_n, filename);
+	}
 }
 
 

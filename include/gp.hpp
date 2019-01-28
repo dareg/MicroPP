@@ -19,12 +19,19 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#ifndef GP_HPP
+#define GP_HPP
 
 #include <cassert>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
+#define GP_NR_MAX_ITS 4
+
 #include "newton.hpp"
+#include "util.hpp"
+#include "tasks.hpp"
 
 template <int dim>
 class gp_t {
@@ -85,4 +92,28 @@ class gp_t {
 			u_n = u_k;
 			u_k = tmp;
 		}
+
+		void print_strain() const
+		{
+			print_matvec(macro_strain, 1, nvoi);
+		}
+
+		void print_stress() const
+		{
+			print_matvec(macro_stress, 1, nvoi);
+		}
+
+		void print_ctan() const
+		{
+			print_matvec(macro_ctan, nvoi, nvoi);
+		}
+
+		void get_info()
+		{
+			printf("gp: %p \t u_n: %p u_k: %p int_vars_n: %p int_vars_k: %p "
+			       "allocated: %d\n",
+			       this, u_k, u_k, int_vars_n, int_vars_k, allocated);
+		}
 };
+
+#endif

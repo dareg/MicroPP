@@ -22,11 +22,12 @@
 #ifndef TASKS_HPP
 #define TASKS_HPP
 
+#include <cstdio>
 #include <cstdlib>
 #include <cassert>
 
-#include "micro.hpp"
 #include "ell.hpp"
+#include "util.hpp"
 
 #ifdef NANOS6
 
@@ -36,7 +37,7 @@ static inline void *rrd_malloc(size_t size)
 {
 	void *ret = nanos_dmalloc(size, DMALLOC_RR, 0, NULL);
 	assert(ret != NULL);
-	dprintf("Using nanos6_dmalloc [%p -> %p] size %d\n",
+	dbprintf("Using nanos6_dmalloc [%p -> %p] size %d\n",
 	        ret, (char*)ret + size, size);
 
 	return ret;
@@ -44,7 +45,7 @@ static inline void *rrd_malloc(size_t size)
 
 static inline void rrd_free(void *in)
 {
-	dprintf("Using nanos6_dfree\n");
+	dbprintf("Using nanos6_dfree(%p)\n", in);
 	nanos_dfree(in);
 }
 
@@ -52,8 +53,22 @@ static inline void *rrl_malloc(size_t size)
 {
 	void *ret = nanos_lmalloc(size);
 	assert(ret != NULL);
-	dprintf("Using nanos6_lmalloc [%p -> %p] size %d\n",
+	dbprintf("Using nanos6_lmalloc [%p -> %p] size %d\n",
 	        ret, (char*)ret + size, size);
+
+	return ret;
+}
+
+static inline void *rrl_calloc(size_t nmemb, size_t size)
+{
+	const int bytes = nmemb * size;
+
+	void *ret = nanos_lmalloc(bytes);
+	assert(ret != NULL);
+	dbprintf("Using nanos6_lmalloc [%p -> %p] size %d\n",
+	        ret, (char*)ret + size, size);
+
+	memset(ret, 0, bytes);
 
 	return ret;
 }
@@ -61,7 +76,7 @@ static inline void *rrl_malloc(size_t size)
 
 static inline void rrl_free(void *in)
 {
-	dprintf("Using nanos6_lfree\n");
+	dbprintf("Using nanos6_lfree(%p)\n", in);
 	nanos_lfree(in);
 }
 
@@ -75,7 +90,7 @@ static inline void *rrd_malloc(size_t size)
 {
 	void *ret = malloc(size);
 	assert(ret != NULL);
-	dprintf("Using libc malloc [%p -> %p] size %d\n",
+	dbprintf("Using libc malloc [%p -> %p] size %d\n",
 	        ret, (char*)ret + size, size);
 
 	return ret;
@@ -83,7 +98,7 @@ static inline void *rrd_malloc(size_t size)
 
 static inline void rrd_free(void *in)
 {
-	dprintf("Using libc_free\n");
+	dbprintf("Using libc_free(%p)\n", in);
 	free(in);
 }
 
@@ -91,16 +106,25 @@ static inline void *rrl_malloc(size_t size)
 {
 	void *ret = malloc(size);
 	assert(ret != NULL);
-	dprintf("Using libc_lmalloc [%p -> %p] size %d\n",
+	dbprintf("Using libc_lmalloc [%p -> %p] size %d\n",
 	        ret, (char*)ret + size, size);
 
 	return ret;
 }
 
+static inline void *rrl_calloc(size_t nmemb, size_t size)
+{
+	void *ret = calloc(nmemb, size);
+	assert(ret != NULL);
+	dbprintf("Using libc_lcalloc [%p -> %p] size %d\n",
+	        ret, (char*)ret + size, size);
+
+	return ret;
+}
 
 static inline void rrl_free(void *in)
 {
-	dprintf("Using libc_lfree\n");
+	dbprintf("Using libc_lfree(%p)\n", in);
 	free(in);
 }
 
@@ -108,23 +132,5 @@ static inline void rrl_free(void *in)
 #define get_nodes_nr() 1
 
 #endif
-
-template <int tdim>
-void homogenize_conditional_task(struct data self, const int nvoi,
-                                 int *ell_cols, const int ell_cols_size,
-                                 const material_t *material_list, const int numMaterials,
-                                 int *elem_type, int nelem,
-                                 gp_t<tdim> *gp_ptr,
-                                 int nndim, int num_int_vars,
-                                 const bool allocated);
-
-
-template <int tdim>
-void homogenize_weak_task(data self, const int nvoi,
-                          int *ell_cols, const int ell_cols_size,
-                          const material_t *material_list, const int numMaterials,
-                          int *elem_type, int nelem,
-                          gp_t<tdim> *gp_ptr, int nndim, int num_int_vars);
-
 
 #endif //TASKS_HPP

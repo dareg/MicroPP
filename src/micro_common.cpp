@@ -19,9 +19,31 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 #include "micro.hpp"
 #include "tasks.hpp"
+#include "gp.hpp"
+
+template<int tdim>
+void* micropp<tdim>::operator new(std::size_t sz)
+{
+	void *ret = rrl_malloc(sz);
+	dbprintf("Calling custom micropp allocator addr: %p:%ul\n", ret, sz);
+	return ret;
+}
+
+template<int tdim>
+void micropp<tdim>::operator delete(void *p)
+{
+	dbprintf("Calling custom deallocator addr: %p\n", p);
+	rrl_free(p);
+}
+
+template<int tdim>
+micropp<tdim>::micropp(const micropp<tdim> &in)
+{
+	memcpy(this, &in, sizeof(micropp<tdim>));
+	copy = true;
+}
 
 
 template<int tdim>
@@ -72,9 +94,9 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 		material_t *tpmaterial = &material_list[i];
 		material_t tmaterial = _materials[i];
 
-		#pragma oss task out(*material_ptr) label(init_material)
+		#pragma oss task out(*tpmaterial) label(init_material)
 		{
-			dprintf("material[%d] :  Node %d/%d\n",
+			dbprintf("material[%d] :  Node %d/%d\n",
 			        i, get_node_id(), get_nodes_nr());
 			*tpmaterial = tmaterial;
 		}
@@ -133,9 +155,10 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 		int *tpelem_type = elem_type;
 		const int tnelem = nelem;
 
-		#pragma oss task in(tpell_cols_ptr[0; tell_cols_size]) \
-			in(tpmaterial_ptr[0; tnumMaterials]) \
-			in(tpelem_type[0; tnelem]) \
+		#pragma oss task in(tpell_cols[0; tell_cols_size])	\
+			in(this[0])										\
+			in(tpmaterial[0; tnumMaterials])				\
+			in(tpelem_type[0; tnelem])						\
 			out(tpctan_lin[0;tnvoi2]) label(calc_ctan)
 		calc_ctan_lin();
 	}
@@ -152,18 +175,21 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 
 		gp_t<tdim> *tpgp = &gp_list[gp];
 
-		double *tv_n = &dint_vars_n[num_int_vars * gp];
-		double *tv_k = &dint_vars_k[num_int_vars * gp];
+		double *tpint_vars_n = &dint_vars_n[num_int_vars * gp];
+		double *tpint_vars_k = &dint_vars_k[num_int_vars * gp];
 
-		double *tu_n = &du_n[nndim * gp];
-		double *tu_k = &du_k[nndim * gp];
+		double *tpu_n = &du_n[nndim * gp];
+		double *tpu_k = &du_k[nndim * gp];
 
 		const int tnndim = nndim;
 
-		#pragma oss task out(tpgp[0]) in(tpctan_lin[0;tnvoi2]) \
-			out(tu_n[0;nndim]) out(tu_k[0;nndim]) label(init_gp)
-		tpgp->init(tv_n, tv_k, tu_n, tu_k, tnndim, tpctan_lin);
+		#pragma oss task out(tpgp[0])								\
+			in(tpctan_lin[0;tnvoi2])								\
+			out(tpu_n[0;nndim])										\
+			label(init_gp)
+		tpgp->init(tpint_vars_n, tpint_vars_k, tpu_n, tpu_k, tnndim, tpctan_lin);
 	}
+	#pragma oss taskwait
 }
 
 
@@ -172,6 +198,8 @@ micropp<tdim>::~micropp()
 {
 	if (copy)
 		return;
+
+	dbprintf("Releasing memory for micropp\n");
 
 	INST_DESTRUCT;
 
