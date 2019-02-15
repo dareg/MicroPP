@@ -35,10 +35,10 @@
 
 static inline void *rrd_malloc(size_t size)
 {
-	void *ret = nanos_dmalloc(size, DMALLOC_RR, 0, NULL);
+	void *ret = nanos6_dmalloc(size);
 	assert(ret != NULL);
 	dbprintf("Using nanos6_dmalloc [%p -> %p] size %d\n",
-	        ret, (char*)ret + size, size);
+			 ret, (char*)ret + size, size);
 
 	return ret;
 }
@@ -46,12 +46,12 @@ static inline void *rrd_malloc(size_t size)
 static inline void rrd_free(void *in)
 {
 	dbprintf("Using nanos6_dfree(%p)\n", in);
-	nanos_dfree(in);
+	nanos6_dfree(in);
 }
 
 static inline void *rrl_malloc(size_t size)
 {
-	void *ret = nanos_lmalloc(size);
+	void *ret = nanos6_lmalloc(size);
 	assert(ret != NULL);
 	dbprintf("Using nanos6_lmalloc [%p -> %p] size %d\n",
 	        ret, (char*)ret + size, size);
@@ -63,7 +63,7 @@ static inline void *rrl_calloc(size_t nmemb, size_t size)
 {
 	const int bytes = nmemb * size;
 
-	void *ret = nanos_lmalloc(bytes);
+	void *ret = nanos6_lmalloc(bytes);
 	assert(ret != NULL);
 	dbprintf("Using nanos6_lmalloc [%p -> %p] size %d\n",
 	        ret, (char*)ret + size, size);
@@ -77,12 +77,12 @@ static inline void *rrl_calloc(size_t nmemb, size_t size)
 static inline void rrl_free(void *in)
 {
 	dbprintf("Using nanos6_lfree(%p)\n", in);
-	nanos_lfree(in);
+	nanos6_lfree(in, 0);
 }
 
 
-#define get_node_id() nanos_get_node_id()
-#define get_nodes_nr() nanos_get_nodes_nr()
+#define get_node_id() nanos6_get_cluster_node_id()
+#define get_nodes_nr() nanos6_get_cluster_nodes()
 
 #else
 

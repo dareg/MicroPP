@@ -199,6 +199,7 @@ micropp<tdim>::~micropp()
 	if (copy)
 		return;
 
+	#pragma oss taskwait
 	dbprintf("Releasing memory for micropp\n");
 
 	INST_DESTRUCT;

@@ -39,6 +39,7 @@
 #endif
 
 #include <cmath>
+#include <cstdio>
 #include <ctime>
 #include <cstring>
 #include <cassert>
