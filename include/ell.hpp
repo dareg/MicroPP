@@ -63,7 +63,7 @@ void ell_init(ell_matrix *m, int *cols, const int nfield, const int dim,
 void ell_mvp(const ell_matrix *m, const double *x, double *y);
 
 int ell_solve_cgpd(const ell_matrix *m, const double *b,
-		double *x, double *err_);
+		   double *x, double *err_);
 
 void ell_add_2D(ell_matrix *m, int ex, int ey, const double *Ae);
 void ell_add_3D(ell_matrix *m, int ex, int ey, int ez, const double *Ae);

@@ -88,13 +88,13 @@ void micropp<3>::calc_bmat(int gp, double bmat[nvoi][npe * dim]) const
 	INST_START;
 
 	constexpr double xg[npe][dim] = { { -CONSTXG, -CONSTXG, -CONSTXG },
-	                              { +CONSTXG, -CONSTXG, -CONSTXG },
-	                              { +CONSTXG, +CONSTXG, -CONSTXG },
-	                              { -CONSTXG, +CONSTXG, -CONSTXG },
-	                              { -CONSTXG, -CONSTXG, +CONSTXG },
-	                              { +CONSTXG, -CONSTXG, +CONSTXG },
-	                              { +CONSTXG, +CONSTXG, +CONSTXG },
-	                              { -CONSTXG, +CONSTXG, +CONSTXG } };
+					  { +CONSTXG, -CONSTXG, -CONSTXG },
+					  { +CONSTXG, +CONSTXG, -CONSTXG },
+					  { -CONSTXG, +CONSTXG, -CONSTXG },
+					  { -CONSTXG, -CONSTXG, +CONSTXG },
+					  { +CONSTXG, -CONSTXG, +CONSTXG },
+					  { +CONSTXG, +CONSTXG, +CONSTXG },
+					  { -CONSTXG, +CONSTXG, +CONSTXG } };
 
 	const double dsh[npe][dim] = {
 		{
@@ -155,7 +155,7 @@ void micropp<3>::calc_bmat(int gp, double bmat[nvoi][npe * dim]) const
 
 template<>
 double micropp<3>::assembly_rhs(const double *u, const double *old,
-								double *b) const
+				double *b) const
 {
 	INST_START;
 
@@ -241,7 +241,7 @@ double micropp<3>::assembly_rhs(const double *u, const double *old,
 
 template <>
 void micropp<3>::assembly_mat(ell_matrix *A, const double *u,
-							  const double *int_vars_old) const
+			      const double *int_vars_old) const
 {
 	INST_START;
 

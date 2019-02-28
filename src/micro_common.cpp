@@ -97,7 +97,7 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 		#pragma oss task out(*tpmaterial) label(init_material)
 		{
 			dbprintf("material[%d] :  Node %d/%d\n",
-			        i, get_node_id(), get_nodes_nr());
+				 i, get_node_id(), get_nodes_nr());
 			*tpmaterial = tmaterial;
 		}
 	}
@@ -156,9 +156,9 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 		const int tnelem = nelem;
 
 		#pragma oss task in(tpell_cols[0; tell_cols_size])	\
-			in(this[0])										\
-			in(tpmaterial[0; tnumMaterials])				\
-			in(tpelem_type[0; tnelem])						\
+			in(this[0])					\
+			in(tpmaterial[0; tnumMaterials])		\
+			in(tpelem_type[0; tnelem])			\
 			out(tpctan_lin[0;tnvoi2]) label(calc_ctan)
 		calc_ctan_lin();
 	}
@@ -183,9 +183,9 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 
 		const int tnndim = nndim;
 
-		#pragma oss task out(tpgp[0])								\
-			in(tpctan_lin[0;tnvoi2])								\
-			out(tpu_n[0;nndim])										\
+		#pragma oss task out(tpgp[0])		\
+			in(tpctan_lin[0;tnvoi2])	\
+			out(tpu_n[0;nndim])		\
 			label(init_gp)
 		tpgp->init(tpint_vars_n, tpint_vars_k, tpu_n, tpu_k, tnndim, tpctan_lin);
 	}
@@ -643,48 +643,48 @@ void micropp<tdim>::print_info() const
 
 	cout << "Micro-structure : ";
 	switch(micro_type) {
-		case(MIC_SPHERE):
-			cout << "MIC_SPHERE" << endl;
-			break;
-		case(MIC_LAYER_Y):
-			cout << "MIC_LAYER_Y" << endl;
-			break;
-		case(MIC_CILI_FIB_Z):
-			cout << "MIC_CILI_FIB_Z" << endl;
-			break;
-		case(MIC_CILI_FIB_XZ):
-			cout << "MIC_CILI_FIB_XZ" << endl;
-			break;
-		case(MIC_QUAD_FIB_XYZ):
-			cout << "MIC_QUAD_FIB_XYZ" << endl;
-			break;
-		case(MIC_QUAD_FIB_XZ):
-			cout << "MIC_QUAD_FIB_XZ" << endl;
-			break;
-		case(MIC_QUAD_FIB_XZ_BROKEN_X):
-			cout << "MIC_QUAD_FIB_XZ_BROKEN_X" << endl;
-			break;
-		case(MIC_SPHERES):
-			cout << "MIC_SPHERES" << endl;
-			break;
-		default:
-			cout << "NO TYPE" << endl;
-			break;
+	case(MIC_SPHERE):
+		cout << "MIC_SPHERE" << endl;
+		break;
+	case(MIC_LAYER_Y):
+		cout << "MIC_LAYER_Y" << endl;
+		break;
+	case(MIC_CILI_FIB_Z):
+		cout << "MIC_CILI_FIB_Z" << endl;
+		break;
+	case(MIC_CILI_FIB_XZ):
+		cout << "MIC_CILI_FIB_XZ" << endl;
+		break;
+	case(MIC_QUAD_FIB_XYZ):
+		cout << "MIC_QUAD_FIB_XYZ" << endl;
+		break;
+	case(MIC_QUAD_FIB_XZ):
+		cout << "MIC_QUAD_FIB_XZ" << endl;
+		break;
+	case(MIC_QUAD_FIB_XZ_BROKEN_X):
+		cout << "MIC_QUAD_FIB_XZ_BROKEN_X" << endl;
+		break;
+	case(MIC_SPHERES):
+		cout << "MIC_SPHERES" << endl;
+		break;
+	default:
+		cout << "NO TYPE" << endl;
+		break;
 	}
 
 	cout << "Coupling : ";
 	switch(coupling) {
-		case(NO_COUPLING):
-			cout << "NO_COUPLING" << endl;
-			break;
-		case(ONE_WAY):
-			cout << "ONE_WAY" << endl;
-			break;
-		case(FULL):
-			cout << "FULL" << endl;
-			break;
-		default:
-			break;
+	case(NO_COUPLING):
+		cout << "NO_COUPLING" << endl;
+		break;
+	case(ONE_WAY):
+		cout << "ONE_WAY" << endl;
+		break;
+	case(FULL):
+		cout << "FULL" << endl;
+		break;
+	default:
+		break;
 	}
 
 	cout << "ngp :" << ngp << " nx :" << nx << " ny :" << ny << " nz :" << nz << " nn :" << nn << endl;
@@ -772,7 +772,7 @@ void micropp<tdim>::calc_ave_strain(const double *u,
 					get_strain(u, gp, strain_gp, ex, ey, ez);
 					for (int v = 0; v < nvoi; ++v)
 						strain_aux[v] += strain_gp[v]\
-								 * wg;
+							* wg;
 				}
 
 				for (int v = 0; v < nvoi; v++)

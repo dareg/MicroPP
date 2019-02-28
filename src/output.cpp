@@ -55,13 +55,13 @@ void micropp<tdim>::output(int gp_id, const char *filename)
 	double *tpelem_strain = elem_strain;
 	const int nelemnvoi = nelem * nvoi;
 
-	#pragma oss task in(material_list[0; numMaterials])					\
-		in(tpelem_type[0; tnelem])										\
-																		\
-		in(tpgp[0])														\
-		in(tpu_k[0; tnndim])											\
-		in(tpint_vars_n[0; tnum_int_vars])								\
-		out(tpelem_stress[0; nelemnvoi])								\
+	#pragma oss task in(material_list[0; numMaterials])	\
+		in(tpelem_type[0; tnelem])			\
+								\
+		in(tpgp[0])					\
+		in(tpu_k[0; tnndim])				\
+		in(tpint_vars_n[0; tnum_int_vars])		\
+		out(tpelem_stress[0; nelemnvoi])		\
 		out(tpelem_strain[0; nelemnvoi])
 	{
 		calc_fields(tpu_k, tpint_vars_n);
@@ -82,14 +82,14 @@ void micropp<tdim>::write_vtu(double *u, const double *old,
 	file.open(fname_vtu);
 
 	file << "<?xml version=\"1.0\"?>\n"
-		<<	"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" "
-		<< "byte_order=\"LittleEndian\">\n"
-		<< "<UnstructuredGrid>\n"
-		<< "<Piece NumberOfPoints=\"" << nn << "\" NumberOfCells=\""
-		<< nelem << "\">\n"
-		<< "<Points>\n"
-		<< "<DataArray type=\"Float64\" Name=\"Position\" "
-		<< "NumberOfComponents=\"3\" format=\"ascii\">" << endl;
+	     <<	"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" "
+	     << "byte_order=\"LittleEndian\">\n"
+	     << "<UnstructuredGrid>\n"
+	     << "<Piece NumberOfPoints=\"" << nn << "\" NumberOfCells=\""
+	     << nelem << "\">\n"
+	     << "<Points>\n"
+	     << "<DataArray type=\"Float64\" Name=\"Position\" "
+	     << "NumberOfComponents=\"3\" format=\"ascii\">" << endl;
 
 	for (int k = 0; k < nz; ++k) {
 		for (int j = 0; j < ny; ++j) {

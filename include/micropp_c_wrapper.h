@@ -24,7 +24,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+	#endif
 
 	void micropp_C_material_set(int num_mat, const double E, double nu,
 				    double Ka, double Sy, int type);
@@ -46,7 +46,7 @@ extern "C" {
 	int micropp_C_get_sigma_cost3(int gp);
 	void micropp_C_output(int gp_id, const char *filename);
 
-#ifdef __cplusplus
+	#ifdef __cplusplus
 }
 #endif
 #endif

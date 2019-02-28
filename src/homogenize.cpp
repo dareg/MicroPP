@@ -48,14 +48,14 @@ void micropp<tdim>::get_macro_stress(const int gp_id, double *macro_stress) cons
 {
 	INST_START;
 
-    assert(gp_id >= 0);
-    assert(gp_id < ngp);
+	assert(gp_id >= 0);
+	assert(gp_id < ngp);
 
 	double *tpgp_macro_stress = gp_list[gp_id].macro_stress;
 	const int tnvoi = nvoi;
 
 	#pragma oss task in(tpgp_macro_stress[0; tnvoi]) out(macro_stress[0; tnvoi])
-    memcpy(macro_stress, tpgp_macro_stress, tnvoi * sizeof(double));
+	memcpy(macro_stress, tpgp_macro_stress, tnvoi * sizeof(double));
 }
 
 
@@ -64,14 +64,14 @@ void micropp<tdim>::get_macro_ctan(const int gp_id, double *macro_ctan) const
 {
 	INST_START;
 
-    assert(gp_id >= 0);
-    assert(gp_id < ngp);
+	assert(gp_id >= 0);
+	assert(gp_id < ngp);
 
 	double *tpgp_macro_ctan = gp_list[gp_id].macro_ctan;
 	const int tnvoi2 = nvoi * nvoi;
 
 	#pragma oss task in(tpgp_macro_ctan[0; tnvoi2]) out(macro_ctan[0; tnvoi2])
-    memcpy(macro_ctan, tpgp_macro_ctan, tnvoi2 * sizeof(double));
+	memcpy(macro_ctan, tpgp_macro_ctan, tnvoi2 * sizeof(double));
 }
 
 
@@ -98,69 +98,66 @@ void micropp<tdim>::homogenize()
 		const int tnum_int_vars = num_int_vars;
 
 		homogenize_weak_task(lnvoi,
-							 tpell_cols, tell_cols_size,
-							 tpmaterial, tnumMaterials,
-							 tpelem_type, tnelem,
-							 gp_ptr, tnndim, tnum_int_vars);
+				     tpell_cols, tell_cols_size,
+				     tpmaterial, tnumMaterials,
+				     tpelem_type, tnelem,
+				     gp_ptr, tnndim, tnum_int_vars);
 	}
 }
 
 
 template <int tdim>
 void micropp<tdim>::homogenize_weak_task(int nvoi,
-										 int *ell_cols, const int ell_cols_size,
-										 const material_t *material_list,
-										 const int numMaterials,
-										 int *elem_type, int nelem,
-										 gp_t<tdim> *gp_ptr, int nndim,
-										 int num_int_vars)
+					 int *ell_cols, const int ell_cols_size,
+					 const material_t *material_list,
+					 const int numMaterials,
+					 int *elem_type, int nelem,
+					 gp_t<tdim> *gp_ptr, int nndim,
+					 int num_int_vars)
 {
 	double *tpint_vars_n = gp_ptr->int_vars_k;
 	double *tpu_k = gp_ptr->u_k;
 
 	if (gp_ptr->allocated) {
-		#pragma oss task in(this[0])					\
-			in(ell_cols[0; ell_cols_size])				\
-			in(material_list[0; numMaterials])			\
-			in(elem_type[0; nelem])						\
-														\
-			inout(gp_ptr[0])							\
-			inout(tpu_k[0; nndim])						\
+		#pragma oss task in(this[0])			\
+			in(ell_cols[0; ell_cols_size])		\
+			in(material_list[0; numMaterials])	\
+			in(elem_type[0; nelem])			\
+								\
+			inout(gp_ptr[0])			\
+			inout(tpu_k[0; nndim])			\
 			inout(tpint_vars_n[0; num_int_vars])
 		homogenize_conditional_task(nvoi,
-									ell_cols, ell_cols_size,
-									material_list, numMaterials,
-									elem_type, nelem,
-									gp_ptr, nndim, num_int_vars,
-									true);
+					    ell_cols, ell_cols_size,
+					    material_list, numMaterials,
+					    elem_type, nelem,
+					    gp_ptr, nndim, num_int_vars);
 	} else {
-		#pragma oss task in(this[0])					\
-			in(ell_cols[0; ell_cols_size])				\
-			in(material_list[0; numMaterials])			\
-			in(elem_type[0; nelem])						\
-														\
-			inout(gp_ptr[0])							\
-			out(tpu_k[0; nndim])						\
+		#pragma oss task in(this[0])			\
+			in(ell_cols[0; ell_cols_size])		\
+			in(material_list[0; numMaterials])	\
+			in(elem_type[0; nelem])			\
+								\
+			inout(gp_ptr[0])			\
+			out(tpu_k[0; nndim])			\
 			out(tpint_vars_n[0; num_int_vars])
 		homogenize_conditional_task(nvoi,
-									ell_cols, ell_cols_size,
-									material_list, numMaterials,
-									elem_type, nelem,
-									gp_ptr, nndim, num_int_vars,
-									false);
+					    ell_cols, ell_cols_size,
+					    material_list, numMaterials,
+					    elem_type, nelem,
+					    gp_ptr, nndim, num_int_vars);
 	}
 }
 
 template <int tdim>
 void micropp<tdim>::homogenize_conditional_task(const int nvoi,
-												int *ell_cols,
-												const int ell_cols_size,
-												const material_t *material_list,
-												const int numMaterials,
-												int *elem_type, int nelem,
-												gp_t<tdim> *gp_ptr,
-												int nndim, int num_int_vars,
-												const bool allocated)
+						int *ell_cols,
+						const int ell_cols_size,
+						const material_t *material_list,
+						const int numMaterials,
+						int *elem_type, int nelem,
+						gp_t<tdim> *gp_ptr,
+						int nndim, int num_int_vars)
 {
 	newton_t newton;
 	newton.max_its = NR_MAX_ITS;
@@ -193,8 +190,8 @@ void micropp<tdim>::homogenize_conditional_task(const int nvoi,
 	memcpy(u, gp_ptr->u_n, nndim * sizeof(double));
 
 	newton_raphson(&A, b, u, du,
-			       gp_ptr->allocated, gp_ptr->macro_strain,
-			       gp_ptr->int_vars_n, &newton);
+		       gp_ptr->allocated, gp_ptr->macro_strain,
+		       gp_ptr->int_vars_n, &newton);
 
 	memcpy(gp_ptr->u_k, u, nndim * sizeof(double));
 	gp_ptr->newton = newton;
@@ -238,7 +235,7 @@ void micropp<tdim>::homogenize_conditional_task(const int nvoi,
 			eps_1[i] += D_EPS_CTAN_AVE;
 
 			newton_raphson(&A, b, u, du,
-						   true, eps_1, gp_ptr->int_vars_n, &newton);
+				       true, eps_1, gp_ptr->int_vars_n, &newton);
 
 			calc_ave_stress(u, gp_ptr->int_vars_n, sig_1);
 
@@ -268,9 +265,9 @@ void micropp<tdim>::update_vars()
 
 	gp_t<tdim> *tpgp = gp_list;
 
-    for (int igp = 0; igp < ngp; ++igp){
+	for (int igp = 0; igp < ngp; ++igp){
 		#pragma oss task inout(tpgp[igp])
-        tpgp[igp].update_vars();
+		tpgp[igp].update_vars();
 	}
 }
 

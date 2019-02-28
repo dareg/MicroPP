@@ -225,19 +225,19 @@ void ell_mvp(const ell_matrix *m, const double *x, double *y)
 
 double get_norm(const double *vector, const int n)
 {
-		double norm = 0.0;
-		for (int i = 0; i < n; ++i)
-			norm += vector[i] * vector[i];
-		return sqrt(norm);
+	double norm = 0.0;
+	for (int i = 0; i < n; ++i)
+		norm += vector[i] * vector[i];
+	return sqrt(norm);
 }
 
 
 double get_dot(const double *v1, const double *v2, const int n)
 {
-		double prod = 0.0;
-		for (int i = 0; i < n; ++i)
-			prod += v1[i] * v2[i];
-		return prod;
+	double prod = 0.0;
+	for (int i = 0; i < n; ++i)
+		prod += v1[i] * v2[i];
+	return prod;
 }
 
 
@@ -292,9 +292,9 @@ int ell_solve_cgpd(const ell_matrix *m, const double *b,
 
 	while (its < m->max_its) {
 
-#ifdef CGDEBUG
+		#ifdef CGDEBUG
 		printf("cgpd : its = %-4d |precon| = %e\n", its, pnorm);
-#endif
+		#endif
 
 		if (pnorm < m->min_err || pnorm < pnorm_0 * m->rel_err)
 			break;
@@ -396,10 +396,10 @@ void ell_add_3D(ell_matrix *m, int ex, int ey, int ez, const double *Ae)
 	const int n3 = n0 + nx;
 
 	const int ix_glo[8] = {	n0, n1, n2, n3,
-		n0 + nxny,
-		n1 + nxny,
-		n2 + nxny,
-		n3 + nxny };
+				n0 + nxny,
+				n1 + nxny,
+				n2 + nxny,
+				n3 + nxny };
 
 	const int nnz_nfield = nfield * nnz;
 	const int npe_nfield = npe * nfield;

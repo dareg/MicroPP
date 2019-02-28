@@ -198,7 +198,7 @@ void micropp<3>::isolin_get_stress(const material_t *material,
 {
 	for (int i = 0; i < 3; ++i)
 		stress[i] = material->lambda * (eps[0] + eps[1] + eps[2]) \
-			    + 2 * material->mu * eps[i];
+			+ 2 * material->mu * eps[i];
 
 	for (int i = 3; i < 6; ++i)
 		stress[i] = material->mu * eps[i];

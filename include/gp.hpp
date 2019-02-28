@@ -73,9 +73,9 @@ class gp_t {
 			memset(_u_n, 0, nndim * sizeof(double));
 
 			dbprintf("gp: %p \t u_n: %p u_k: %p int_vars_n: %p int_vars_k: %p "
-				   "allocated: %d node: %d/%d\n",
-				   this, u_k, u_k, int_vars_n, int_vars_k, allocated,
-				   get_node_id(), get_nodes_nr());
+				 "allocated: %d node: %d/%d\n",
+				 this, u_k, u_k, int_vars_n, int_vars_k, allocated,
+				 get_node_id(), get_nodes_nr());
 		}
 
 		~gp_t()	{}
