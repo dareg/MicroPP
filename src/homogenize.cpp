@@ -97,57 +97,52 @@ void micropp<tdim>::homogenize()
 		const int tnndim = nndim;
 		const int tnum_int_vars = num_int_vars;
 
-		homogenize_weak_task(lnvoi,
-				     tpell_cols, tell_cols_size,
-				     tpmaterial, tnumMaterials,
-				     tpelem_type, tnelem,
-				     gp_ptr, tnndim, tnum_int_vars);
+		double *tpu_k = gp_ptr->u_k;
+		double *tpint_vars_n = gp_ptr->int_vars_k;
+
+		#pragma oss task in(this[0])				\
+			weakin(tpell_cols[0; tell_cols_size])		\
+			weakin(tpmaterial[0; tnumMaterials])		\
+			weakin(tpelem_type[0; tnelem])			\
+									\
+			inout(gp_ptr[0])				\
+			weakinout(tpu_k[0; tnndim])			\
+			weakinout(tpint_vars_n[0; tnum_int_vars])
+		{
+
+			if (gp_ptr->allocated) {
+				#pragma oss task in(this[0])		\
+					in(tpell_cols[0; tell_cols_size]) \
+					in(tpmaterial[0; tnumMaterials]) \
+					in(tpelem_type[0; tnelem])	\
+									\
+					inout(gp_ptr[0])		\
+					inout(tpu_k[0; tnndim])		\
+					inout(tpint_vars_n[0; tnum_int_vars])
+				homogenize_conditional_task(lnvoi,
+							    tpell_cols, tell_cols_size,
+							    tpmaterial, tnumMaterials,
+							    tpelem_type, tnelem,
+							    gp_ptr, nndim, tnum_int_vars);
+			} else {
+				#pragma oss task in(this[0])		\
+					in(tpell_cols[0; ell_cols_size]) \
+					in(tpmaterial[0; tnumMaterials]) \
+					in(tpelem_type[0; tnelem])	\
+									\
+					inout(gp_ptr[0])		\
+					out(tpu_k[0; tnndim])		\
+					out(tpint_vars_n[0; tnum_int_vars])
+				homogenize_conditional_task(lnvoi,
+							    tpell_cols, tell_cols_size,
+							    tpmaterial, tnumMaterials,
+							    tpelem_type, tnelem,
+							    gp_ptr, nndim, tnum_int_vars);
+			}
+		}
 	}
 }
 
-
-template <int tdim>
-void micropp<tdim>::homogenize_weak_task(int nvoi,
-					 int *ell_cols, const int ell_cols_size,
-					 const material_t *material_list,
-					 const int numMaterials,
-					 int *elem_type, int nelem,
-					 gp_t<tdim> *gp_ptr, int nndim,
-					 int num_int_vars)
-{
-	double *tpint_vars_n = gp_ptr->int_vars_k;
-	double *tpu_k = gp_ptr->u_k;
-
-	if (gp_ptr->allocated) {
-		#pragma oss task in(this[0])			\
-			in(ell_cols[0; ell_cols_size])		\
-			in(material_list[0; numMaterials])	\
-			in(elem_type[0; nelem])			\
-								\
-			inout(gp_ptr[0])			\
-			inout(tpu_k[0; nndim])			\
-			inout(tpint_vars_n[0; num_int_vars])
-		homogenize_conditional_task(nvoi,
-					    ell_cols, ell_cols_size,
-					    material_list, numMaterials,
-					    elem_type, nelem,
-					    gp_ptr, nndim, num_int_vars);
-	} else {
-		#pragma oss task in(this[0])			\
-			in(ell_cols[0; ell_cols_size])		\
-			in(material_list[0; numMaterials])	\
-			in(elem_type[0; nelem])			\
-								\
-			inout(gp_ptr[0])			\
-			out(tpu_k[0; nndim])			\
-			out(tpint_vars_n[0; num_int_vars])
-		homogenize_conditional_task(nvoi,
-					    ell_cols, ell_cols_size,
-					    material_list, numMaterials,
-					    elem_type, nelem,
-					    gp_ptr, nndim, num_int_vars);
-	}
-}
 
 template <int tdim>
 void micropp<tdim>::homogenize_conditional_task(const int nvoi,

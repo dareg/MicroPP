@@ -228,11 +228,6 @@ class micropp {
 		void update_vars();
 		void print_info() const;
 
-		void homogenize_weak_task(const int nvoi,
-					  int *ell_cols, const int ell_cols_size,
-					  const material_t *material_list, const int numMaterials,
-					  int *elem_type, int nelem,
-					  gp_t<tdim> *gp_ptr, int nndim, int num_int_vars);
 
 		void homogenize_conditional_task(const int nvoi,
 						 int *ell_cols, const int ell_cols_size,
