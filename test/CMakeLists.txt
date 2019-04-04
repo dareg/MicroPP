@@ -17,6 +17,7 @@ set(testsources
 	test_omp.cpp
 	test_material.cpp
 	test_damage.cpp
+	test_elastic.cpp
 	test_util_1.cpp)
 
 # Iterate over the list above
@@ -41,4 +42,5 @@ add_test(NAME test_ell_2 COMMAND test_ell_2)
 add_test(NAME test_ell_3 COMMAND test_ell_3 5 5)
 add_test(NAME test_util_1 COMMAND test_util_1)
 add_test(NAME test_material COMMAND test_material 5)
+add_test(NAME test_elastic COMMAND test_elastic 10)
 add_test(NAME test_damage COMMAND test_damage 10)
