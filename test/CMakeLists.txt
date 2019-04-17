@@ -43,5 +43,6 @@ add_test(NAME test_ell_mvp_openacc COMMAND test_ell_mvp_openacc 5 5)
 add_test(NAME test_util_1 COMMAND test_util_1)
 add_test(NAME test_material COMMAND test_material 5)
 add_test(NAME test_damage COMMAND test_damage 10)
+add_test(NAME test_newton_raphson_acc COMMAND test_newton_raphson_acc 10 2)
 
 set_property(TARGET test3d_3 PROPERTY LINKER_LANGUAGE Fortran)

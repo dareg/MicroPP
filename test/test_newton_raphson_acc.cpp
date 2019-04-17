@@ -19,35 +19,27 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 #include <iostream>
 #include <iomanip>
-
 
 #include <ctime>
 #include <cassert>
 
-
 #include "micro.hpp"
 
-
-#define REPETITIONS 1
-
-
 using namespace std;
-
 
 class test_t : public micropp<3> {
 
 	public:
 		test_t(const int size[3], const int micro_type, const double micro_params[5],
 		       const material_base materials[2])
-			:micropp<3> (1, size, micro_type, micro_params, materials, ONE_WAY)
+			:micropp<3> (1, size, micro_type, micro_params, materials, NO_COUPLING)
 		{};
 
 		~test_t() {};
 
-		void newton_raphson(const double *strain)
+		void calc_newton(const double *strain)
 		{
 			const int ns[3] = { nx, ny, nz };
 			ell_matrix A;
@@ -57,7 +49,11 @@ class test_t : public micropp<3> {
 			double *du = (double *) calloc(nndim, sizeof(double));
 			double *u = (double *) calloc(nndim, sizeof(double));
 
+#ifdef _OPENACC
 			newton_t newton = newton_raphson_acc(&A, b, u, du, strain);
+#else
+			newton_t newton = newton_raphson(&A, b, u, du, strain);
+#endif
 			newton.print();
 
 			ell_free(&A);
@@ -76,6 +72,7 @@ int main (int argc, char *argv[])
 	}
 
 	const int n = (argc > 1) ? atoi(argv[1]) : 10;
+	const int reps = (argc > 2) ? atoi(argv[2]) : 1;
 	const int size[3] = { n, n, n };
 	const int micro_type = 2;
 	const double micro_params[4] = { 1., 1., 1., 0.2 };
@@ -88,8 +85,9 @@ int main (int argc, char *argv[])
 
 	test_t test(size, micro_type, micro_params, mat_params);
 
-	for (int i = 0; i < REPETITIONS; ++i)
-		test.newton_raphson(strain);
+	for (int i = 0; i < reps; ++i) {
+		test.calc_newton(strain);
+	}
 
 	return 0;
 }
