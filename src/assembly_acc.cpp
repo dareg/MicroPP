@@ -256,7 +256,7 @@ void micropp<3>::assembly_mat_acc(ell_matrix *A, const double *u,
 			}
 		}
 	}
-#pragma acc parallel loop gang vector copyin(ctan[:nex*ney*nez*npe*nvoi*nvoi],bmat[:npe*nvoi*npedim],A[:1],A->nrow,A->nnz,cols_row[:8][:8])copy(A->vals[:A->nrow * A->nnz])
+#pragma acc parallel loop gang vector copyin(ctan[:nex*ney*nez*npe*nvoi*nvoi],bmat[:npe*nvoi*npedim]) present(A[:1], A->vals[:A->nrow * A->nnz])
 	for (int ex = 0; ex < nex; ++ex) {
 		for (int ey = 0; ey < ney; ++ey) {
 			for (int ez = 0; ez < nez; ++ez) {
@@ -317,7 +317,9 @@ void micropp<3>::assembly_mat_acc(ell_matrix *A, const double *u,
 	}
 	delete []bmat;
 	delete []ctan;
+#pragma acc update self(A[:1], A->vals[:A->nrow * A->nnz])
 	ell_set_bc_3D_acc(A);
+#pragma acc update device(A[:1], A->vals[:A->nrow * A->nnz])
 }
 
 
