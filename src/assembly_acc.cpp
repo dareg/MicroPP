@@ -211,6 +211,7 @@ void micropp<3>::assembly_mat_acc(ell_matrix *A, const double *u,
 	INST_START;
 
 	ell_set_zero_mat(A);
+#pragma acc update self(A[:1], A->vals[:A->nrow * A->nnz])
 	const int nx = A->n[0];
 	const int ny = A->n[1];
 	const int nxny = nx * ny;
@@ -256,7 +257,7 @@ void micropp<3>::assembly_mat_acc(ell_matrix *A, const double *u,
 			}
 		}
 	}
-#pragma acc parallel loop gang vector copyin(ctan[:nex*ney*nez*npe*nvoi*nvoi],bmat[:npe*nvoi*npedim]) present(A[:1], A->vals[:A->nrow * A->nnz])
+#pragma acc parallel loop gang vector copyin(ctan[:nex*ney*nez*npe*nvoi*nvoi],bmat[:npe*nvoi*npedim]) present(A[:1], A->nrow, A->nnz, A->vals[:A->nrow * A->nnz])
 	for (int ex = 0; ex < nex; ++ex) {
 		for (int ey = 0; ey < ney; ++ey) {
 			for (int ez = 0; ez < nez; ++ez) {
