@@ -206,10 +206,6 @@ int ell_solve_cgpd_acc(const ell_matrix *m, const double *b, double *x, double *
 
 #pragma acc enter data copyin(x[:m->nrow], b[:m->nrow])
 
-///#pragma acc enter data copyin(m[0:1])
-///#pragma acc enter data copyin(m->cols[:m->nrow * m->nnz], m->vals[:m->nrow * m->nnz])
-///#pragma acc enter data copyin(m->r[:m->nrow], m->z[:m->nrow], m->k[:m->nrow], m->p[:m->nrow], m->Ap[:m->nrow])
-
 #pragma acc parallel loop present(m[0:1], m->k[:m->nrow], m->vals[:m->nrow * m->nnz])
 	for (int i = 0; i < m->nn; i++) {
 		for (int d = 0; d < m->nfield; d++)
@@ -275,10 +271,6 @@ int ell_solve_cgpd_acc(const ell_matrix *m, const double *b, double *x, double *
 		rz = rz_n;
 		its++;
 	}
-
-//#pragma acc exit data copyout(m->cols[:m->nrow * m->nnz], m->vals[:m->nrow * m->nnz])
-//#pragma acc exit data copyout(m->r[:m->nrow], m->z[:m->nrow], m->k[:m->nrow], m->p[:m->nrow], m->Ap[:m->nrow])
-//#pragma acc exit data delete(m[0:1])
 
 #pragma acc exit data copyout(x[:m->nrow], b[:m->nrow])
 

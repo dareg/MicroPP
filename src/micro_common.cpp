@@ -125,7 +125,9 @@ micropp<tdim>::~micropp()
 #pragma acc exit data delete(A_acc.cols[:A_acc.nrow * A_acc.nnz])
 #pragma acc exit data delete(A_acc.r[:A_acc.nrow], A_acc.z[:A_acc.nrow], A_acc.k[:A_acc.nrow], A_acc.p[:A_acc.nrow], A_acc.Ap[:A_acc.nrow])
 #pragma acc exit data delete(A_acc)
+#ifdef _OPENACC
 	ell_free(&A_acc);
+#endif
 
 	delete [] gp_list;
 }
