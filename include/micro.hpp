@@ -145,6 +145,9 @@ class micropp {
 		const int nr_max_its;
 		const double nr_max_tol;
 		const double nr_rel_tol;
+#ifdef _OPENACC
+		ell_matrix A_acc;
+#endif
 
 		void homogenize_task(int gp);
 		void homogenize_task_acc(int gp);

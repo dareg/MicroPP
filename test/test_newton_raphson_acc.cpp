@@ -41,22 +41,24 @@ class test_t : public micropp<3> {
 
 		void calc_newton(const double *strain)
 		{
-			const int ns[3] = { nx, ny, nz };
-			ell_matrix A;
-			ell_init(&A, dim, dim, ns);
 
 			double *b = (double *) calloc(nndim, sizeof(double));
 			double *du = (double *) calloc(nndim, sizeof(double));
 			double *u = (double *) calloc(nndim, sizeof(double));
 
 #ifdef _OPENACC
-			newton_t newton = newton_raphson_acc(&A, b, u, du, strain);
+			newton_t newton = newton_raphson_acc(&A_acc, b, u, du, strain);
 #else
+			const int ns[3] = { nx, ny, nz };
+			ell_matrix A;
+			ell_init(&A, dim, dim, ns);
+
 			newton_t newton = newton_raphson(&A, b, u, du, strain);
+
+			ell_free(&A);
 #endif
 			newton.print();
 
-			ell_free(&A);
 			free(b);
 			free(u);
 			free(du);

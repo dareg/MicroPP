@@ -103,6 +103,13 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 	for (int gp = 0; gp < ngp; ++gp)
 		memcpy(gp_list[gp].ctan, ctan_lin, nvoi * nvoi * sizeof(double));
 
+#ifdef _OPENACC
+	ell_init(&A_acc, dim, dim, size);
+//#pragma acc enter data copyin(A_acc)
+//#pragma acc enter data copyin(A_acc.cols[:A_acc.nrow * A_acc.nnz])
+//#pragma acc enter data create(A_acc.vals[:A_acc.nrow * A_acc.nnz], A_acc.r[:A_acc.nrow], A_acc.z[:A_acc.nrow], A_acc.k[:A_acc.nrow], A_acc.p[:A_acc.nrow], A_acc.Ap[:A_acc.nrow])
+#endif
+
 }
 
 
@@ -176,7 +183,7 @@ void micropp<tdim>::calc_ctan_lin()
 		const int ns[3] = { nx, ny, nz };
 
 		ell_matrix A;  // Jacobian
-		ell_init(&A, dim, dim, ns, CG_MIN_ERR, CG_REL_ERR, CG_MAX_ITS);
+		ell_init(&A, dim, dim, ns);
 		double *b = (double *) calloc(nndim, sizeof(double));
 		double *du = (double *) calloc(nndim, sizeof(double));
 		double *u = (double *) calloc(nndim, sizeof(double));
