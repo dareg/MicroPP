@@ -53,8 +53,10 @@ newton_t micropp<tdim>::newton_raphson_acc(ell_matrix *A, double *b, double *u, 
 		double cg_err;
 
 //#pragma acc enter data copyin(A->vals[:A->nrow * A->nnz])
+//#pragma acc update device(A->vals[:A->nrow * A->nnz])
 		int cg_its = ell_solve_cgpd_acc(A, b, du, &cg_err);
 //#pragma acc exit data delete(A->vals[:A->nrow * A->nnz])
+//#pragma acc update self(A->vals[:A->nrow * A->nnz])
 
 		newton.solver_its += cg_its;
 

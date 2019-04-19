@@ -100,8 +100,8 @@ micropp<tdim>::micropp(const int _ngp, const int size[3], const int _micro_type,
 	ell_init(&A_acc, dim, dim, size);
 #pragma acc enter data copyin(A_acc)
 #pragma acc enter data copyin(A_acc.cols[:A_acc.nrow * A_acc.nnz])
-#pragma acc enter data create(A_acc.r[:A_acc.nrow], A_acc.z[:A_acc.nrow], A_acc.k[:A_acc.nrow], A_acc.p[:A_acc.nrow], A_acc.Ap[:A_acc.nrow])
 #pragma acc enter data create(A_acc.vals[:A_acc.nrow * A_acc.nnz])
+#pragma acc enter data create(A_acc.r[:A_acc.nrow], A_acc.z[:A_acc.nrow], A_acc.k[:A_acc.nrow], A_acc.p[:A_acc.nrow], A_acc.Ap[:A_acc.nrow])
 #endif
 
 	memset(ctan_lin, 0.0, nvoi * nvoi * sizeof(double));
@@ -124,8 +124,10 @@ micropp<tdim>::~micropp()
 	free(elem_type);
 
 #pragma acc exit data delete(A_acc.cols[:A_acc.nrow * A_acc.nnz])
-#pragma acc exit data delete(A_acc.r[:A_acc.nrow], A_acc.z[:A_acc.nrow], A_acc.k[:A_acc.nrow], A_acc.p[:A_acc.nrow], A_acc.Ap[:A_acc.nrow],A_acc.vals[:A_acc.nrow * A_acc.nnz])
+#pragma acc exit data delete(A_acc.vals[:A_acc.nrow * A_acc.nnz])
+#pragma acc exit data delete(A_acc.r[:A_acc.nrow], A_acc.z[:A_acc.nrow], A_acc.k[:A_acc.nrow], A_acc.p[:A_acc.nrow], A_acc.Ap[:A_acc.nrow])
 #pragma acc exit data delete(A_acc)
+
 #ifdef _OPENACC
 	ell_free(&A_acc);
 #endif
