@@ -204,7 +204,7 @@ double micropp<3>::assembly_rhs_acc(const double *u, const double *vars_old,
 
 
 
-template <>
+template<>
 void micropp<3>::assembly_mat_acc(ell_matrix *A, const double *u,
 				  const double *vars_old)
 {
@@ -260,17 +260,20 @@ void micropp<3>::assembly_mat_acc(ell_matrix *A, const double *u,
 	for (int i = 0; i < A->nrow * A->nnz; ++i) {
 		A->vals[i] = 0.0;
 	}
-#pragma acc update self(A->vals[:A->nrow * A->nnz])
 
 #pragma acc enter data copyin(ctan[:nex*ney*nez*npe*nvoi*nvoi], bmat[:npe*nvoi*npedim]) 
-//#pragma acc parallel loop 
-//#pragma acc parallel loop present(A[:1], A->nrow, A->nnz, A->vals[:A->nrow * A->nnz])
+	
+#pragma acc enter data copyin(nex, ney, nez)
+#pragma acc enter data copyin(cols_row[0:8][0:8])
+
+#pragma acc parallel loop present(A[:1], A->nrow, A->nnz, A->vals[:A->nrow * A->nnz], ctan[:nex*ney*nez*npe*nvoi*nvoi])
 	for (int ex = 0; ex < nex; ++ex) {
 		for (int ey = 0; ey < ney; ++ey) {
 			for (int ez = 0; ez < nez; ++ez) {
 
 				double Ae[npedim2];
-				for(int i=0;i<npedim2;i++)Ae[i]=0;
+				for(int i=0; i<npedim2; i++)
+					Ae[i]=0;
 
 				for (int gp = 0; gp < npe; ++gp) {
 					double cxb[nvoi][npedim];
@@ -310,12 +313,11 @@ void micropp<3>::assembly_mat_acc(ell_matrix *A, const double *u,
 				const int nnz_nfield = nfield * nnz;
 				const int npe_nfield = npe * nfield;
 				const int npe_nfield2 = npe * nfield * nfield;
-
 				for (int fi = 0; fi < nfield; ++fi){
 					for (int fj = 0; fj < nfield; ++fj){
 						for (int i = 0; i < npe; ++i){
 							for (int j = 0; j < npe; ++j){
-//#pragma acc atomic update
+#pragma acc atomic update
 								A->vals[ix_glo[i] * nnz_nfield + cols_row[i][j] * nfield + fi * nnz + fj] += Ae[i * npe_nfield2 + fi * npe_nfield + j * nfield + fj];
 							}
 						}
@@ -329,7 +331,7 @@ void micropp<3>::assembly_mat_acc(ell_matrix *A, const double *u,
 	delete []bmat;
 	delete []ctan;
 
-//#pragma acc update self(A->vals[:A->nrow * A->nnz])
+#pragma acc update self(A->vals[:A->nrow * A->nnz])
 	ell_set_bc_3D_acc(A);
 #pragma acc update device(A->vals[:A->nrow * A->nnz])
 }
